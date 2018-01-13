@@ -3,7 +3,7 @@
 const utils = require('./helpers/utils')
 
 const ChannelManager = artifacts.require("./ChannelManager.sol")
-const Judge = artifacts.require("./JudgeAlways420.sol")
+const Judge = artifacts.require("./JudgeHelloWorld.sol")
 
 let cm
 let jg
@@ -22,9 +22,39 @@ contract('ChannelManager', function(accounts) {
 
     let channelId = event_args.channelId
 
-    await cm.exerciseJudge(channelId, 'testVar(uint256)', 420)
-    let data = await jg.data()
-    console.log('Contract data after proxy call: ' + data.toNumber())
+    var msg = padBytes32(web3.toHex('hello'))
+    console.log(padBytes32(msg))
+    var hmsg = web3.sha3(msg, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
+
+    var sig = await web3.eth.sign(accounts[0], hmsg)
+    var r = sig.substr(0,66)
+    var s = "0x" + sig.substr(66,64)
+    var v = 28
+
+    await cm.exerciseJudge(channelId, 'testVar(bytes32)', v, r, s, msg)
+    let newState = await jg.newState()
+    let testRecover = await cm.tester()
+    let _hash = await cm.hash()
+    console.log('Hash : ' + _hash)
+    console.log('Recovered Address: ' + testRecover)
+    console.log(accounts[0])
+    console.log('Sliced new invalid state data: ' + newState)
+
+    let d = await cm.da()
+    console.log('data stored: ' + d)
+
+    let load = await jg.t()
+    console.log('assembly data stored: ' + load)
   })
 
 })
+
+
+function padBytes32(data){
+  let l = 66-data.length
+  for(var i=0; i<l; i++) {
+    data+=0
+  }
+  return data
+}
