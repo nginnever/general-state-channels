@@ -71,13 +71,14 @@ contract ChannelManager {
 
     }
 
-    function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes32 _data) public {
-        da.push(_data[0]);
+    function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes _data) public {
+        //da.push(_data[0]);
+        uint dataLength = _data.length;
         uint256 _bonded = channels[_id].bonded;
         channels[_id].bonded = 0;
 
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data[0]);
+        bytes32 h = keccak256(_data);
         hash = h;
         bytes32 prefixedHash = keccak256(prefix, h);
         address challenged = ecrecover(prefixedHash, v, r, s);
@@ -85,8 +86,6 @@ contract ChannelManager {
 
         require(challenged == channels[_id].partyA || challenged == channels[_id].partyB);
         // assert that the state update failed the judge run
-        //require(!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), _data));
-        //require(!channels[_id].judge.run(_data));
 
         // address addr = address(channels[_id].judge);
         // bytes4 sig = bytes4(bytes32(sha3(_method)));
@@ -100,7 +99,7 @@ contract ChannelManager {
         //     mstore(0x40, add(x,0x44))
         // }
 
-        channels[_id].judge.call(bytes4(bytes32(sha3(_method))), _data);
+        require(channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data));
 
         // punish the violator and close the channel
         // msg.sender.send(_bonded / 2);

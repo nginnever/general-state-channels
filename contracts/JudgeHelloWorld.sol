@@ -5,8 +5,8 @@ import "./JudgeInterface.sol";
 contract JudgeHelloWorld is JudgeInterface {
 
     bytes32 public newState;
-    bytes1 public temp;
-    bytes32 public t;
+    bytes32 public temp;
+    bytes public t;
     bool public tester = false;
 
     bytes1 h = 0x68;
@@ -24,7 +24,7 @@ contract JudgeHelloWorld is JudgeInterface {
     // to the challengers local state. If the outcome is not part of the word, then 
     // the challenge was successful.
 
-    function run(bytes32 _data) public returns (bool) {
+    function run(bytes _data) public returns (bool) {
       // get the signed new state and transition action
       //newState = _data;
 
@@ -36,6 +36,13 @@ contract JudgeHelloWorld is JudgeInterface {
       t = _data;
       tester = true;
 
+      // [0:8] sequence number (in this case building the word could check for longest valid state for seq check)
+      bytes32 sequence;
+      uint te;
+
+      (sequence, te) = decodeState(_data);
+
+      temp = sequence;
       //bytes1[] word;
 
       // for (uint i=0; i<_data.length; i++){
@@ -45,6 +52,13 @@ contract JudgeHelloWorld is JudgeInterface {
 
       //require(1 == 2);
       return true;
+    }
+
+    function decodeState(bytes state) pure internal returns (bytes32 sequence, uint te) {
+        assembly {
+            sequence := mload(add(state, 0))
+            te := mload(add(state, 12))
+        }
     }
 
 }

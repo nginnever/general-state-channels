@@ -24,6 +24,7 @@ contract('ChannelManager', function(accounts) {
 
     var msg = padBytes32(web3.toHex('hello'))
     let msgArr = [msg]
+    msgArr.push('0xdeadbeef')
     console.log(msgArr)
     console.log(padBytes32(msg))
     var hmsg = web3.sha3(msg, {encoding: 'hex'})
@@ -37,7 +38,7 @@ contract('ChannelManager', function(accounts) {
     let ttt = await jg.tester()
     console.log(ttt)
 
-    await cm.exerciseJudge(channelId, 'run(bytes32)', v, r, s, msg)
+    await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
     let newState = await jg.newState()
     let testRecover = await cm.tester()
     let _hash = await cm.hash()
@@ -46,10 +47,10 @@ contract('ChannelManager', function(accounts) {
     console.log(accounts[0])
     console.log('Sliced new invalid state data: ' + newState)
 
-    let d = await cm.da(0)
-    console.log('data stored: ' + d)
+    // let d = await cm.da(0)
+    // console.log('data stored: ' + d)
 
-    let load = await jg.t()
+    let load = await jg.temp()
     console.log('assembly data stored: ' + load)
 
     ttt = await jg.tester()
