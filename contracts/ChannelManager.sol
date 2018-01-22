@@ -1,6 +1,7 @@
 pragma solidity ^0.4.18;
 
 import "./JudgeInterface.sol";
+import "./InterpreterInterface.sol";
 
 contract ChannelManager {
     address public tester;
@@ -15,10 +16,13 @@ contract ChannelManager {
         uint256 bond;
         uint256 bonded;
         JudgeInterface judge;
+        InterpreterInterface interpreter;
 
         uint settlementPeriod;
         bool open;
         bool settling;
+        bytes state;
+        uint sequenceNum;
     }
 
     mapping(bytes32 => Channel) channels;
@@ -27,18 +31,46 @@ contract ChannelManager {
 
     event ChannelCreated(bytes32 channelId, address indexed partyA, address indexed partyB);
 
-    function openChannel(address _partyB, uint _duration, uint _settlementPeriod, address _judge) public payable {
+    function openChannel(
+        address _partyB, 
+        uint _duration, 
+        uint _settlementPeriod, 
+        address _interpreter, 
+        address _judge, 
+        bytes _initState) 
+        public 
+        payable 
+    {
         // Open channel should run an initial state against the judge to make sure it is okay.
 
-        JudgeInterface candidateContract = JudgeInterface(_judge);
+        JudgeInterface candidateJudgeContract = JudgeInterface(_judge);
+        InterpreterInterface candidateInterpreterContract = InterpreterInterface(_interpreter);
 
         // NOTE: verify that a contract is what we expect - https://github.com/Lunyr/crowdsale-contracts/blob/cfadd15986c30521d8ba7d5b6f57b4fefcc7ac38/contracts/LunyrToken.sol#L117
-        require(candidateContract.isJudge());
+        require(candidateJudgeContract.isJudge());
+        require(candidateInterpreterContract.isInterpreter());
+
+        // send bond to the interpreter contract. This contract will read agreed upon state 
+        // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
+
+        candidateInterpreterContract.send(msg.value);
+
         require(_partyB != 0x0);
 
 
         Channel memory _channel = Channel(
-            msg.sender, _partyB, msg.value, msg.value, candidateContract, _settlementPeriod, false, false);
+            msg.sender, 
+            _partyB, 
+            msg.value, 
+            msg.value, 
+            candidateJudgeContract, 
+            candidateInterpreterContract, 
+            _settlementPeriod, 
+            false, 
+            false, 
+            _initState, 
+            0
+        );
 
         numChannels++;
         var _id = keccak256(now + numChannels);
@@ -51,10 +83,31 @@ contract ChannelManager {
     function joinChannel(bytes32 _id) public payable{
         require(channels[_id].partyB == msg.sender);
         require(msg.value == channels[_id].bond);
-        channels[_id].open == true;
+        channels[_id].open = true;
         channels[_id].bonded += msg.value;
+
+        channels[_id].interpreter.send(msg.value);
     }
 
+    // This updates the state stored in the channel struct
+    // check that a valid state is signed by both parties
+    // change this to an optional update function to checkpoint state
+    function checkpoint(
+        bytes32 _id, 
+        bytes32 _data, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s, 
+        uint8 v2, 
+        bytes32 r2, 
+        bytes32 s2) 
+        public 
+    {
+    // 
+
+    }
+
+    // Fast close: Both parties agreed to close
     // check that a valid state is signed by both parties
     // change this to an optional update function to checkpoint state
     function closeChannel(
@@ -68,11 +121,11 @@ contract ChannelManager {
         bytes32 s2) 
         public 
     {
-    //
+    // 
 
     }
 
-    function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes _data) public {
+    function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes _data) public returns(bool success){
         //da.push(_data[0]);
         uint dataLength = _data.length;
         dlength = dataLength;
@@ -116,5 +169,40 @@ contract ChannelManager {
         // }
 
         // delete channels[_id];
+    }
+
+    function getChannel(bytes32 _id)
+        external
+        view
+        returns
+    (
+        address partyA,
+        address partyB,
+        uint256 bond,
+        uint256 bonded,
+        address judge,
+        address interpreter,
+        uint settlementPeriod,
+        bool open,
+        bool settling,
+        bytes state,
+        uint sequenceNum
+    ) {
+
+        Channel storage ch = channels[_id];
+
+        return (
+            ch.partyA,
+            ch.partyB,
+            ch.bond,
+            ch.bonded,
+            ch.judge,
+            ch.interpreter,
+            ch.settlementPeriod,
+            ch.open,
+            ch.settling,
+            ch.state,
+            ch.sequenceNum
+        );
     }
 }
