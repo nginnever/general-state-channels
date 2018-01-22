@@ -6,7 +6,8 @@ contract JudgeHelloWorld is JudgeInterface {
 
     bytes32 public newState;
     bytes1 public temp;
-    bytes1 public t;
+    bytes32 public t;
+    bool public tester = false;
 
     bytes1 h = 0x68;
     bytes1 e = 0x65;
@@ -25,14 +26,15 @@ contract JudgeHelloWorld is JudgeInterface {
 
     function run(bytes32 _data) public returns (bool) {
       // get the signed new state and transition action
-      newState = _data;
+      //newState = _data;
 
       // apply the action to the supplied challenger state
 
       // check that the outcome of state transition on challenger state
       // with accused state update is equal to the signed state by the violator
       bytes1 _temp;
-      t = _data[1];
+      t = _data;
+      tester = true;
 
       //bytes1[] word;
 
@@ -42,7 +44,7 @@ contract JudgeHelloWorld is JudgeInterface {
       // }
 
       //require(1 == 2);
-      return false;
+      return true;
     }
 
 }

@@ -5,7 +5,7 @@ import "./JudgeInterface.sol";
 contract ChannelManager {
     address public tester;
     bytes32 public hash;
-    bytes32 public da;
+    bytes32[] public da;
 
     struct Channel
     {
@@ -27,6 +27,8 @@ contract ChannelManager {
     event ChannelCreated(bytes32 channelId, address indexed partyA, address indexed partyB);
 
     function openChannel(address _partyB, uint _duration, uint _settlementPeriod, address _judge) public payable {
+        // Open channel should run an initial state against the judge to make sure it is okay.
+
         JudgeInterface candidateContract = JudgeInterface(_judge);
 
         // NOTE: verify that a contract is what we expect - https://github.com/Lunyr/crowdsale-contracts/blob/cfadd15986c30521d8ba7d5b6f57b4fefcc7ac38/contracts/LunyrToken.sol#L117
@@ -53,6 +55,7 @@ contract ChannelManager {
     }
 
     // check that a valid state is signed by both parties
+    // change this to an optional update function to checkpoint state
     function closeChannel(
         bytes32 _id, 
         bytes32 _data, 
@@ -69,12 +72,12 @@ contract ChannelManager {
     }
 
     function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes32 _data) public {
-        da = _data;
+        da.push(_data[0]);
         uint256 _bonded = channels[_id].bonded;
         channels[_id].bonded = 0;
 
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data);
+        bytes32 h = keccak256(_data[0]);
         hash = h;
         bytes32 prefixedHash = keccak256(prefix, h);
         address challenged = ecrecover(prefixedHash, v, r, s);
@@ -82,10 +85,22 @@ contract ChannelManager {
 
         require(challenged == channels[_id].partyA || challenged == channels[_id].partyB);
         // assert that the state update failed the judge run
-        // require(!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), _data));
-        require(!channels[_id].judge.run(_data));
+        //require(!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), _data));
+        //require(!channels[_id].judge.run(_data));
 
-        //channels[_id].judge.call(bytes4(bytes32(sha3(_method))), _data)
+        // address addr = address(channels[_id].judge);
+        // bytes4 sig = bytes4(bytes32(sha3(_method)));
+        // assembly {
+        //     let x := mload(0x40)
+        //     mstore(x, sig)
+        //     mstore(add(x,0x04), _data)
+
+        //     let success := call(5000, addr, 0, x, 0x44, x, 0x20)
+        //     let c := mload(x)
+        //     mstore(0x40, add(x,0x44))
+        // }
+
+        channels[_id].judge.call(bytes4(bytes32(sha3(_method))), _data);
 
         // punish the violator and close the channel
         // msg.sender.send(_bonded / 2);
@@ -98,6 +113,6 @@ contract ChannelManager {
         //     channels[_id].partyA.send(_bonded);
         // }
 
-        delete channels[_id];
+        // delete channels[_id];
     }
 }

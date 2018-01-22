@@ -8,4 +8,5 @@ contract JudgeInterface {
     }
 
     function run(bytes32 _data) public returns (bool);
+
 }
