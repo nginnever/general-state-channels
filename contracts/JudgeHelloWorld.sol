@@ -6,8 +6,7 @@ contract JudgeHelloWorld is JudgeInterface {
 
     bytes32 public newState;
     bytes32 public temp;
-    bytes public t;
-    bool public tester = false;
+    uint public s;
 
     bytes1 h = 0x68;
     bytes1 e = 0x65;
@@ -26,23 +25,30 @@ contract JudgeHelloWorld is JudgeInterface {
 
     function run(bytes _data) public returns (bool) {
       // get the signed new state and transition action
-      //newState = _data;
 
       // apply the action to the supplied challenger state
 
       // check that the outcome of state transition on challenger state
       // with accused state update is equal to the signed state by the violator
-      bytes1 _temp;
-      t = _data;
-      tester = true;
 
       // [0:8] sequence number (in this case building the word could check for longest valid state for seq check)
-      bytes32 sequence;
-      uint te;
+      uint sequence;
 
-      (sequence, te) = decodeState(_data);
+      assembly {
+          sequence := mload(add(_data, 32))
+      }
 
-      temp = sequence;
+      s = sequence;
+      
+      bytes32 _h;
+      bytes32 _e;
+      bytes32 _l;
+      bytes32 _l2;
+      bytes32 _o;
+
+      (_h, _e, _l, _l2, _o) = decodeState(_data);
+
+      temp = _l;
       //bytes1[] word;
 
       // for (uint i=0; i<_data.length; i++){
@@ -54,10 +60,13 @@ contract JudgeHelloWorld is JudgeInterface {
       return true;
     }
 
-    function decodeState(bytes state) pure internal returns (bytes32 sequence, uint te) {
+    function decodeState(bytes state) pure internal returns (bytes32 _h, bytes32 _e, bytes32 _l, bytes32 _l2, bytes32 _o) {
         assembly {
-            sequence := mload(add(state, 0))
-            te := mload(add(state, 12))
+            _h := mload(add(state, 64))
+            _e := mload(add(state, 96))
+            _l := mload(add(state, 128))
+            _l2 := mload(add(state, 160))
+            _o := mload(add(state, 192))
         }
     }
 

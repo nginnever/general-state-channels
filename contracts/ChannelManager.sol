@@ -6,6 +6,7 @@ contract ChannelManager {
     address public tester;
     bytes32 public hash;
     bytes32[] public da;
+    uint public dlength;
 
     struct Channel
     {
@@ -74,6 +75,8 @@ contract ChannelManager {
     function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes _data) public {
         //da.push(_data[0]);
         uint dataLength = _data.length;
+        dlength = dataLength;
+
         uint256 _bonded = channels[_id].bonded;
         channels[_id].bonded = 0;
 
