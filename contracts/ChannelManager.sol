@@ -112,7 +112,7 @@ contract ChannelManager {
     // change this to an optional update function to checkpoint state
     function closeChannel(
         bytes32 _id, 
-        bytes32 _data, 
+        bytes _data, 
         uint8 v, 
         bytes32 r, 
         bytes32 s, 
@@ -121,7 +121,18 @@ contract ChannelManager {
         bytes32 s2) 
         public 
     {
-    // 
+    //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
+    // signed a close channel agreement on this representation of the state.
+
+    // check for this sentinel value
+
+        uint close;
+
+        assembly {
+            close := mload(add(_data, 32))
+        }
+
+        require(close == 1);
 
     }
 

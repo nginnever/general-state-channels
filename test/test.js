@@ -41,15 +41,27 @@ contract('ChannelManager', function(accounts) {
     // Account 2 will then concat "e" transforming state to "he" and send this to account1
     // repeat until "hello" is signed by both parties and close the state
     // there is no wager so the interpreter should just return the bond
-    
-    var sequence = padBytes32(web3.toHex(2))
 
-    var hello = padBytes32(web3.toHex('hello'))
-    var word2 = padBytes32(web3.toHex('world'))
-    var word3 = padBytes32(web3.toHex('weee'))
+    // we build the first 32 byte word with a sentinel value indicating the party is 
+    // interested in closing this channel
+    var sentinel = padBytes32(web3.toHex(1))
+    var sequence = padBytes32(web3.toHex(1))
+
+    var h = padBytes32(web3.toHex('h'))
+    var e = padBytes32(web3.toHex('e'))
+    var l = padBytes32(web3.toHex('l'))
+    var o = padBytes32(web3.toHex('o'))
+
     console.log('Sequence number: ' + sequence)
 
-    var msg = sequence + word2.substr(2, word2.length) + hello.substr(2, hello.length) + word3.substr(2, word3.length)
+    var msg = sentinel + 
+              sequence.substr(2, sequence.length) + 
+              h.substr(2, h.length) + 
+              e.substr(2, e.length) + 
+              l.substr(2, l.length) + 
+              l.substr(2, l.length) +
+              o.substr(2, o.length)
+
     console.log('State input: ' + msg)
 
     // let msgArr = [msg]
@@ -63,9 +75,18 @@ contract('ChannelManager', function(accounts) {
     var sig = await web3.eth.sign(accounts[0], hmsg)
     var r = sig.substr(0,66)
     var s = "0x" + sig.substr(66,64)
-    var v = 28
+    var v = 27
 
     await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
+
+    sig = await web3.eth.sign(accounts[1], hmsg)
+    var r2 = sig.substr(0, 66)
+    var s2 = "0x" + sig.substr(66, 64)
+    var v2 = 27
+
+    await cm.closeChannel(channelId, msg, v, r, s, v2, r2, s2)
+
+    console.log('Channel closed by two party signature on close sentinel')
 
     let testRecover = await cm.tester()
     let _hash = await cm.hash()
