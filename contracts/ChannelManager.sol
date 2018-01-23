@@ -2,9 +2,11 @@ pragma solidity ^0.4.18;
 
 import "./JudgeInterface.sol";
 import "./InterpreterInterface.sol";
+import "./lib/ECRecovery.sol";
 
 contract ChannelManager {
     address public tester;
+    address public tester2;
     bytes32 public hash;
     bytes32[] public da;
     uint public dlength;
@@ -95,12 +97,8 @@ contract ChannelManager {
     function checkpoint(
         bytes32 _id, 
         bytes32 _data, 
-        uint8 v, 
-        bytes32 r, 
-        bytes32 s, 
-        uint8 v2, 
-        bytes32 r2, 
-        bytes32 s2) 
+        bytes sig1,
+        bytes sig2) 
         public 
     {
     // 
@@ -113,27 +111,37 @@ contract ChannelManager {
     function closeChannel(
         bytes32 _id, 
         bytes _data, 
-        uint8 v, 
-        bytes32 r, 
-        bytes32 s, 
-        uint8 v2, 
-        bytes32 r2, 
-        bytes32 s2) 
+        bytes sig1,
+        bytes sig2) 
         public 
     {
-    //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
-    // signed a close channel agreement on this representation of the state.
+        // check this state is signed by both parties
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 h = keccak256(_data);
+        hash = h;
 
-    // check for this sentinel value
+        bytes32 prefixedHash = keccak256(prefix, h);
 
-        uint close;
+        address challenged = ECRecovery.recover(prefixedHash, sig1);
+
+        address challenged2 = ECRecovery.recover(prefixedHash, sig2);
+
+        require(challenged == channels[_id].partyA && challenged2 == channels[_id].partyB);
+        //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
+        // signed a close channel agreement on this representation of the state.
+
+        // check for this sentinel value
+
+        uint isClose;
 
         assembly {
-            close := mload(add(_data, 32))
+            isClose := mload(add(_data, 32))
         }
 
-        require(close == 1);
+        require(isClose == 1);
 
+        // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
+        channels[_id].state = _data;
     }
 
     function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes _data) public returns(bool success){

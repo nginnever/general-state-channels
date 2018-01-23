@@ -72,19 +72,19 @@ contract('ChannelManager', function(accounts) {
     var hmsg = web3.sha3(msg, {encoding: 'hex'})
     console.log('hashed msg: ' + hmsg)
 
-    var sig = await web3.eth.sign(accounts[0], hmsg)
-    var r = sig.substr(0,66)
-    var s = "0x" + sig.substr(66,64)
+    var sig1 = await web3.eth.sign(accounts[0], hmsg)
+    var r = sig1.substr(0,66)
+    var s = "0x" + sig1.substr(66,64)
     var v = 27
 
     await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
 
-    sig = await web3.eth.sign(accounts[1], hmsg)
-    var r2 = sig.substr(0, 66)
-    var s2 = "0x" + sig.substr(66, 64)
+    var sig2 = await web3.eth.sign(accounts[1], hmsg)
+    var r2 = sig2.substr(0, 66)
+    var s2 = "0x" + sig2.substr(66, 64)
     var v2 = 27
 
-    await cm.closeChannel(channelId, msg, v, r, s, v2, r2, s2)
+    await cm.closeChannel(channelId, msg, sig1, sig2)
 
     console.log('Channel closed by two party signature on close sentinel')
 
