@@ -7,6 +7,6 @@ contract JudgeInterface {
       return judge;
     }
 
-    function run(bytes _data) public returns (bool);
+    function run(bytes _data) public;
 
 }

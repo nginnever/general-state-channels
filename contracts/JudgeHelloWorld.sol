@@ -8,11 +8,10 @@ contract JudgeHelloWorld is JudgeInterface {
     bytes32 public temp;
     uint public s;
 
-    bytes1 h = 0x68;
-    bytes1 e = 0x65;
-    bytes1 l = 0x6c;
-    bytes1 l2 = 0x6c;
-    bytes1 o = 0xf0;
+    bytes32 h = 0x68;
+    bytes32 e = 0x65;
+    bytes32 l = 0x6c;
+    bytes32 o = 0x6f;
 
     bytes constant word_table = "\x68\x65\x6c\x6c\xf0";
 
@@ -23,7 +22,7 @@ contract JudgeHelloWorld is JudgeInterface {
     // to the challengers local state. If the outcome is not part of the word, then 
     // the challenge was successful.
 
-    function run(bytes _data) public returns (bool) {
+    function run(bytes _data) public {
       // get the signed new state and transition action
 
       // apply the action to the supplied challenger state
@@ -39,7 +38,7 @@ contract JudgeHelloWorld is JudgeInterface {
       }
 
       s = sequence;
-      
+
       bytes32 _h;
       bytes32 _e;
       bytes32 _l;
@@ -49,24 +48,21 @@ contract JudgeHelloWorld is JudgeInterface {
       (_h, _e, _l, _l2, _o) = decodeState(_data);
 
       temp = _l;
-      //bytes1[] word;
 
-      // for (uint i=0; i<_data.length; i++){
-
-      //   word.push(_data[i]);
-      // }
-
-      //require(1 == 2);
-      return true;
+      require(_h == h || _h == 0x0);
+      require(_e == e || _e == 0x0);
+      require(_l == l || _l == 0x0);
+      require(_l2 == l || _l2 == 0x0);
+      require(_o == o || _o == 0x0);
     }
 
     function decodeState(bytes state) pure internal returns (bytes32 _h, bytes32 _e, bytes32 _l, bytes32 _l2, bytes32 _o) {
         assembly {
-            _h := mload(add(state, 64))
-            _e := mload(add(state, 96))
-            _l := mload(add(state, 128))
-            _l2 := mload(add(state, 160))
-            _o := mload(add(state, 192))
+            _h := mload(add(state, 96))
+            _e := mload(add(state, 128))
+            _l := mload(add(state, 160))
+            _l2 := mload(add(state, 192))
+            _o := mload(add(state, 224))
         }
     }
 

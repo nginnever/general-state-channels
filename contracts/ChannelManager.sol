@@ -10,6 +10,7 @@ contract ChannelManager {
     bytes32 public hash;
     bytes32[] public da;
     uint public dlength;
+    bool public judgeRes;
 
     struct Channel
     {
@@ -19,10 +20,10 @@ contract ChannelManager {
         uint256 bonded;
         JudgeInterface judge;
         InterpreterInterface interpreter;
-
         uint settlementPeriod;
         bool open;
         bool settling;
+        address[2] disputeAddresses;
         bytes state;
         uint sequenceNum;
     }
@@ -69,7 +70,8 @@ contract ChannelManager {
             candidateInterpreterContract, 
             _settlementPeriod, 
             false, 
-            false, 
+            false,
+            [address(0x0),address(0x0)],
             _initState, 
             0
         );
@@ -96,13 +98,35 @@ contract ChannelManager {
     // change this to an optional update function to checkpoint state
     function checkpoint(
         bytes32 _id, 
-        bytes32 _data, 
+        bytes _data, 
         bytes sig1,
         bytes sig2) 
         public 
     {
-    // 
+        // check this state is signed by both parties
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 h = keccak256(_data);
+        hash = h;
 
+        bytes32 prefixedHash = keccak256(prefix, h);
+
+        address challenged = ECRecovery.recover(prefixedHash, sig1);
+        address challenged2 = ECRecovery.recover(prefixedHash, sig2);
+
+        require(challenged == channels[_id].partyA && challenged2 == channels[_id].partyB);
+
+        uint seq;
+
+        assembly {
+            seq := mload(add(_data, 64))
+        }
+
+        require(!channels[_id].interpreter.isClose(_data));
+        require(channels[_id].sequenceNum < seq);
+
+        // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
+        channels[_id].state = _data;
+        channels[_id].sequenceNum = seq;
     }
 
     // Fast close: Both parties agreed to close
@@ -123,7 +147,6 @@ contract ChannelManager {
         bytes32 prefixedHash = keccak256(prefix, h);
 
         address challenged = ECRecovery.recover(prefixedHash, sig1);
-
         address challenged2 = ECRecovery.recover(prefixedHash, sig2);
 
         require(challenged == channels[_id].partyA && challenged2 == channels[_id].partyB);
@@ -132,19 +155,20 @@ contract ChannelManager {
 
         // check for this sentinel value
 
-        uint isClose;
-
-        assembly {
-            isClose := mload(add(_data, 32))
-        }
-
-        require(isClose == 1);
+        require(channels[_id].interpreter.isClose(_data));
 
         // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
         channels[_id].state = _data;
+        channels[_id].open = false;
     }
 
-    function exerciseJudge(bytes32 _id, string _method, uint8 v, bytes32 r, bytes32 s, bytes _data) public returns(bool success){
+    function closeWithChallenge(bytes32 _id) public {
+        require(channels[_id].disputeAddresses[0] != 0x0);
+        channels[_id].interpreter.challenge(channels[_id].disputeAddresses[0], channels[_id].state);
+        channels[_id].open = false;
+    }
+
+    function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
         //da.push(_data[0]);
         uint dataLength = _data.length;
         dlength = dataLength;
@@ -156,7 +180,7 @@ contract ChannelManager {
         bytes32 h = keccak256(_data);
         hash = h;
         bytes32 prefixedHash = keccak256(prefix, h);
-        address challenged = ecrecover(prefixedHash, v, r, s);
+        address challenged = ECRecovery.recover(prefixedHash, sig);
         tester = challenged;
 
         require(challenged == channels[_id].partyA || challenged == channels[_id].partyB);
@@ -174,7 +198,15 @@ contract ChannelManager {
         //     mstore(0x40, add(x,0x44))
         // }
 
-        require(channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data));
+        if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
+            judgeRes = true;
+            channels[_id].state = _data;
+            channels[_id].disputeAddresses[0] = challenged;
+            channels[_id].disputeAddresses[1] = msg.sender;
+
+        } else {
+            judgeRes = false;
+        }
 
         // punish the violator and close the channel
         // msg.sender.send(_bonded / 2);
@@ -204,6 +236,7 @@ contract ChannelManager {
         uint settlementPeriod,
         bool open,
         bool settling,
+        address[2] disputeAddresses,
         bytes state,
         uint sequenceNum
     ) {
@@ -220,6 +253,7 @@ contract ChannelManager {
             ch.settlementPeriod,
             ch.open,
             ch.settling,
+            ch.disputeAddresses,
             ch.state,
             ch.sequenceNum
         );

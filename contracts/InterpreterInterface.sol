@@ -9,8 +9,12 @@ contract InterpreterInterface {
 
     function interpret(bytes _data) public returns (bool);
 
+    function isClose(bytes _data) public returns (bool);
+
+    function challenge(address _violator, bytes _state) public;
+
     function () payable {
-      
+
     }
 
 }

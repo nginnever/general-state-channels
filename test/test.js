@@ -73,11 +73,12 @@ contract('ChannelManager', function(accounts) {
     console.log('hashed msg: ' + hmsg)
 
     var sig1 = await web3.eth.sign(accounts[0], hmsg)
+    // we slice the sig in solidity now to reduce call depth 
     var r = sig1.substr(0,66)
     var s = "0x" + sig1.substr(66,64)
     var v = 27
 
-    await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
+    await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
     var sig2 = await web3.eth.sign(accounts[1], hmsg)
     var r2 = sig2.substr(0, 66)
@@ -103,6 +104,13 @@ contract('ChannelManager', function(accounts) {
 
     let _seq = await jg.s()
     console.log('recovered sequence num: ' + _seq)
+
+    let judgeres = await cm.judgeRes()
+    console.log('Judge resolution: ' + judgeres)
+
+    // build an invalid state, signed by one of the parties. Excersize the judge so that it
+    // may fail and set the violator and state of violation. Then use the interpreter proxy call
+    // to resolve the action of sending the violators bond to the challenger.
   })
 
 })
