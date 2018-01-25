@@ -111,6 +111,8 @@ contract('ChannelManager', function(accounts) {
     // build an invalid state, signed by one of the parties. Excersize the judge so that it
     // may fail and set the violator and state of violation. Then use the interpreter proxy call
     // to resolve the action of sending the violators bond to the challenger.
+
+
   })
 
 })

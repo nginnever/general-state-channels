@@ -21,8 +21,7 @@ contract ChannelManager {
         JudgeInterface judge;
         InterpreterInterface interpreter;
         uint settlementPeriod;
-        bool open;
-        bool settling;
+        uint8[3] booleans; //  [0,1] = [false, true] : ['isChannelOpen', 'isInSettlingPeriod', 'judgeResolution']
         address[2] disputeAddresses;
         bytes state;
         uint sequenceNum;
@@ -69,8 +68,7 @@ contract ChannelManager {
             candidateJudgeContract, 
             candidateInterpreterContract, 
             _settlementPeriod, 
-            false, 
-            false,
+            [0,0,1],
             [address(0x0),address(0x0)],
             _initState, 
             0
@@ -87,7 +85,7 @@ contract ChannelManager {
     function joinChannel(bytes32 _id) public payable{
         require(channels[_id].partyB == msg.sender);
         require(msg.value == channels[_id].bond);
-        channels[_id].open = true;
+        channels[_id].booleans[0] = 1;
         channels[_id].bonded += msg.value;
 
         channels[_id].interpreter.send(msg.value);
@@ -159,13 +157,14 @@ contract ChannelManager {
 
         // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
         channels[_id].state = _data;
-        channels[_id].open = false;
+        channels[_id].booleans[0] = 0;
     }
 
     function closeWithChallenge(bytes32 _id) public {
         require(channels[_id].disputeAddresses[0] != 0x0);
+        require(channels[_id].booleans[2] == 0);
         channels[_id].interpreter.challenge(channels[_id].disputeAddresses[0], channels[_id].state);
-        channels[_id].open = false;
+        channels[_id].booleans[0] = 0;
     }
 
     function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
@@ -200,12 +199,14 @@ contract ChannelManager {
 
         if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
-            channels[_id].state = _data;
-            channels[_id].disputeAddresses[0] = challenged;
-            channels[_id].disputeAddresses[1] = msg.sender;
+            channels[_id].booleans[2] = 1;
 
         } else {
             judgeRes = false;
+            channels[_id].booleans[2] = 0;
+            channels[_id].state = _data;
+            channels[_id].disputeAddresses[0] = challenged;
+            channels[_id].disputeAddresses[1] = msg.sender;
         }
 
         // punish the violator and close the channel
@@ -234,8 +235,7 @@ contract ChannelManager {
         address judge,
         address interpreter,
         uint settlementPeriod,
-        bool open,
-        bool settling,
+        uint8[3] booleans,
         address[2] disputeAddresses,
         bytes state,
         uint sequenceNum
@@ -251,8 +251,7 @@ contract ChannelManager {
             ch.judge,
             ch.interpreter,
             ch.settlementPeriod,
-            ch.open,
-            ch.settling,
+            ch.booleans,
             ch.disputeAddresses,
             ch.state,
             ch.sequenceNum
