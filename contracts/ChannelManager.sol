@@ -20,8 +20,9 @@ contract ChannelManager {
         uint256 bonded;
         JudgeInterface judge;
         InterpreterInterface interpreter;
-        uint settlementPeriod;
-        uint8[3] booleans; //  [0,1] = [false, true] : ['isChannelOpen', 'isInSettlingPeriod', 'judgeResolution']
+        uint256 settlementPeriodLength;
+        uint256 settlementPeriodEnd;
+        uint8[3] booleans; // ['isChannelOpen', 'settlingPeriodStarted', 'judgeResolution']
         address[2] disputeAddresses;
         bytes state;
         uint sequenceNum;
@@ -67,7 +68,8 @@ contract ChannelManager {
             msg.value, 
             candidateJudgeContract, 
             candidateInterpreterContract, 
-            _settlementPeriod, 
+            _settlementPeriod,
+            0,
             [0,0,1],
             [address(0x0),address(0x0)],
             _initState, 
@@ -94,7 +96,7 @@ contract ChannelManager {
     // This updates the state stored in the channel struct
     // check that a valid state is signed by both parties
     // change this to an optional update function to checkpoint state
-    function checkpoint(
+    function checkpointState(
         bytes32 _id, 
         bytes _data, 
         bytes sig1,
@@ -160,11 +162,85 @@ contract ChannelManager {
         channels[_id].booleans[0] = 0;
     }
 
+    // Closing with the following does not need to contain a flag in state for an agreed close
+
+    // requires judge exercised
     function closeWithChallenge(bytes32 _id) public {
         require(channels[_id].disputeAddresses[0] != 0x0);
         require(channels[_id].booleans[2] == 0);
+        // have the interpreter act on the verfied incorrect state 
         channels[_id].interpreter.challenge(channels[_id].disputeAddresses[0], channels[_id].state);
         channels[_id].booleans[0] = 0;
+    }
+
+    function closeWithTimeout(bytes32 _id) public {
+        require(channels[_id].settlementPeriodEnd >= now);
+
+        // handle timeout logic
+        channels[_id].interpreter.timeout(channels[_id].state);
+    }
+
+    function challengeSettleState(bytes32 _id, bytes _data, bytes sig1, bytes sig2) public {
+        // require the channel to be in a settling state
+        require(channels[_id].booleans[1] == 1);
+        require(channels[_id].settlementPeriodEnd < now);
+
+        // check this state is signed by both parties
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 h = keccak256(_data);
+        hash = h;
+
+        bytes32 prefixedHash = keccak256(prefix, h);
+
+        address party1 = ECRecovery.recover(prefixedHash, sig1);
+        address party2 = ECRecovery.recover(prefixedHash, sig2);
+
+        require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
+
+        // we also alow the sequence to be equal to allow continued game
+        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].sequenceNum));
+
+        channels[_id].booleans[1] = 0;
+        channels[_id].settlementPeriodEnd = 0;
+
+    }
+
+    function startSettleState(bytes32 _id, string _method, bytes sig, bytes _data, uint256 _seqNum) public {
+        require(channels[_id].booleans[1] == 0);
+
+        uint dataLength = _data.length;
+
+        //require(!channels[_id].interpreter.isClose(_data));
+        // check this state is signed by one party
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 h = keccak256(_data);
+        hash = h;
+
+        bytes32 prefixedHash = keccak256(prefix, h);
+
+        address initiator = ECRecovery.recover(prefixedHash, sig);
+
+        require(initiator == channels[_id].partyA || initiator == channels[_id].partyB);
+
+        // In order to start settling we run the judge to be sure this is a valid state transition
+
+        if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
+            judgeRes = true;
+            channels[_id].booleans[2] = 1;
+
+        } else {
+            judgeRes = false;
+            channels[_id].booleans[2] = 0;
+            channels[_id].state = _data;
+            channels[_id].disputeAddresses[0] = initiator;
+            channels[_id].disputeAddresses[1] = msg.sender;
+        }
+
+        require(channels[_id].booleans[2] == 1);
+        require(channels[_id].interpreter.isSequenceHigher(_data, _seqNum));
+
+        channels[_id].booleans[1] = 1;
+        channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
     }
 
     function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
@@ -208,19 +284,6 @@ contract ChannelManager {
             channels[_id].disputeAddresses[0] = challenged;
             channels[_id].disputeAddresses[1] = msg.sender;
         }
-
-        // punish the violator and close the channel
-        // msg.sender.send(_bonded / 2);
-        // _bonded -= _bonded/2;
-
-        // // return bond to non-violator
-        // if(challenged == channels[_id].partyA) {
-        //     channels[_id].partyB.send(_bonded);
-        // } else {
-        //     channels[_id].partyA.send(_bonded);
-        // }
-
-        // delete channels[_id];
     }
 
     function getChannel(bytes32 _id)
@@ -234,7 +297,8 @@ contract ChannelManager {
         uint256 bonded,
         address judge,
         address interpreter,
-        uint settlementPeriod,
+        uint256 settlementPeriodLength,
+        uint256 settlementPeriodEnd,
         uint8[3] booleans,
         address[2] disputeAddresses,
         bytes state,
@@ -250,7 +314,8 @@ contract ChannelManager {
             ch.bonded,
             ch.judge,
             ch.interpreter,
-            ch.settlementPeriod,
+            ch.settlementPeriodLength,
+            ch.settlementPeriodEnd,
             ch.booleans,
             ch.disputeAddresses,
             ch.state,

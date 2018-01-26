@@ -13,7 +13,7 @@ let int
 let event_args
 
 contract('ChannelManager', function(accounts) {
-  it("ChannelManager deployed", async function() {
+  it("General State Channel Testing", async function() {
     cm = await ChannelManager.new()
     jg = await Judge.new()
     int = await Interpreter.new()
@@ -29,7 +29,7 @@ contract('ChannelManager', function(accounts) {
     await cm.joinChannel(channelId, {from: accounts[1], value: web3.toWei(2, 'ether')})
 
     let open = await cm.getChannel(channelId)
-    console.log('Channel joined, open: ' + open[7])
+    console.log('Channel joined, open: ' + open[7][0])
 
     // State encoding
 
@@ -87,7 +87,10 @@ contract('ChannelManager', function(accounts) {
 
     await cm.closeChannel(channelId, msg, sig1, sig2)
 
+    open = await cm.getChannel(channelId)
+
     console.log('Channel closed by two party signature on close sentinel')
+
 
     let testRecover = await cm.tester()
     let _hash = await cm.hash()
@@ -105,8 +108,7 @@ contract('ChannelManager', function(accounts) {
     let _seq = await jg.s()
     console.log('recovered sequence num: ' + _seq)
 
-    let judgeres = await cm.judgeRes()
-    console.log('Judge resolution: ' + judgeres)
+    console.log('Judge resolution: ' + open[8][2])
 
     // build an invalid state, signed by one of the parties. Excersize the judge so that it
     // may fail and set the violator and state of violation. Then use the interpreter proxy call
