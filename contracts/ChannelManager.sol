@@ -5,11 +5,6 @@ import "./InterpreterInterface.sol";
 import "./lib/ECRecovery.sol";
 
 contract ChannelManager {
-    address public tester;
-    address public tester2;
-    bytes32 public hash;
-    bytes32[] public da;
-    uint public dlength;
     bool public judgeRes;
 
     struct Channel
@@ -40,7 +35,8 @@ contract ChannelManager {
         uint _settlementPeriod, 
         address _interpreter, 
         address _judge, 
-        bytes _initState) 
+        bytes _data,
+        bytes _sig) 
         public 
         payable 
     {
@@ -53,26 +49,33 @@ contract ChannelManager {
         require(candidateJudgeContract.isJudge());
         require(candidateInterpreterContract.isInterpreter());
 
+        // check the account opening a channel signed the initial state
+        address s = _getSig(_data, _sig);
+        require(s == msg.sender);
+
         // send bond to the interpreter contract. This contract will read agreed upon state 
         // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
 
         candidateInterpreterContract.send(msg.value);
 
+        // not running judge against initial state since the client counterparty can check the state
+        // before agreeing to join the channel
+
         require(_partyB != 0x0);
 
 
         Channel memory _channel = Channel(
-            msg.sender, 
-            _partyB, 
-            msg.value, 
-            msg.value, 
-            candidateJudgeContract, 
-            candidateInterpreterContract, 
+            msg.sender,
+            _partyB,
+            msg.value,
+            msg.value,
+            candidateJudgeContract,
+            candidateInterpreterContract,
             _settlementPeriod,
             0,
             [0,0,1],
             [address(0x0),address(0x0)],
-            _initState, 
+            _data, 
             0
         );
 
@@ -100,33 +103,30 @@ contract ChannelManager {
         bytes32 _id, 
         bytes _data, 
         bytes sig1,
-        bytes sig2) 
+        bytes sig2,
+        uint _seq) 
         public 
     {
+
+        // this needs its own function
         // check this state is signed by both parties
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 h = keccak256(_data);
-        hash = h;
 
         bytes32 prefixedHash = keccak256(prefix, h);
 
-        address challenged = ECRecovery.recover(prefixedHash, sig1);
-        address challenged2 = ECRecovery.recover(prefixedHash, sig2);
+        address party1 = ECRecovery.recover(prefixedHash, sig1);
+        address party2 = ECRecovery.recover(prefixedHash, sig2);
 
-        require(challenged == channels[_id].partyA && challenged2 == channels[_id].partyB);
+        require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
 
-        uint seq;
-
-        assembly {
-            seq := mload(add(_data, 64))
-        }
-
-        require(!channels[_id].interpreter.isClose(_data));
-        require(channels[_id].sequenceNum < seq);
+        require(channels[_id].interpreter.isSequenceEqual(_data, _seq));
+        //require(!channels[_id].interpreter.isClose(_data));
+        //require(channels[_id].sequenceNum < seq);
 
         // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
         channels[_id].state = _data;
-        channels[_id].sequenceNum = seq;
+        channels[_id].sequenceNum = _seq;
     }
 
     // Fast close: Both parties agreed to close
@@ -139,15 +139,9 @@ contract ChannelManager {
         bytes sig2) 
         public 
     {
-        // check this state is signed by both parties
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data);
-        hash = h;
 
-        bytes32 prefixedHash = keccak256(prefix, h);
-
-        address challenged = ECRecovery.recover(prefixedHash, sig1);
-        address challenged2 = ECRecovery.recover(prefixedHash, sig2);
+        address challenged = _getSig(_data, sig1);
+        address challenged2 = _getSig(_data, sig2);
 
         require(challenged == channels[_id].partyA && challenged2 == channels[_id].partyB);
         //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
@@ -186,14 +180,8 @@ contract ChannelManager {
         require(channels[_id].settlementPeriodEnd < now);
 
         // check this state is signed by both parties
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data);
-        hash = h;
-
-        bytes32 prefixedHash = keccak256(prefix, h);
-
-        address party1 = ECRecovery.recover(prefixedHash, sig1);
-        address party2 = ECRecovery.recover(prefixedHash, sig2);
+        address party1 = _getSig(_data, sig1);
+        address party2 = _getSig(_data, sig2);
 
         require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
 
@@ -212,13 +200,7 @@ contract ChannelManager {
 
         //require(!channels[_id].interpreter.isClose(_data));
         // check this state is signed by one party
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data);
-        hash = h;
-
-        bytes32 prefixedHash = keccak256(prefix, h);
-
-        address initiator = ECRecovery.recover(prefixedHash, sig);
+        address initiator = _getSig(_data, sig);
 
         require(initiator == channels[_id].partyA || initiator == channels[_id].partyB);
 
@@ -244,19 +226,12 @@ contract ChannelManager {
     }
 
     function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
-        //da.push(_data[0]);
         uint dataLength = _data.length;
-        dlength = dataLength;
 
         uint256 _bonded = channels[_id].bonded;
         channels[_id].bonded = 0;
 
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data);
-        hash = h;
-        bytes32 prefixedHash = keccak256(prefix, h);
-        address challenged = ECRecovery.recover(prefixedHash, sig);
-        tester = challenged;
+        address challenged = _getSig(_data, sig);
 
         require(challenged == channels[_id].partyA || challenged == channels[_id].partyB);
         // assert that the state update failed the judge run
@@ -321,5 +296,16 @@ contract ChannelManager {
             ch.state,
             ch.sequenceNum
         );
+    }
+
+    function _getSig(bytes _d, bytes _s) internal returns(address) {
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 h = keccak256(_d);
+
+        bytes32 prefixedHash = keccak256(prefix, h);
+
+        address a = ECRecovery.recover(prefixedHash, _s);
+
+        return(a);
     }
 }
