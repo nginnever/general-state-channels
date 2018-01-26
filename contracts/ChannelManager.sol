@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
-import "./JudgeInterface.sol";
-import "./InterpreterInterface.sol";
+import "./judges/JudgeInterface.sol";
+import "./interpreters/InterpreterInterface.sol";
 import "./lib/ECRecovery.sol";
 
 contract ChannelManager {
