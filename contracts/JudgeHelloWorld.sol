@@ -4,7 +4,15 @@ import "./JudgeInterface.sol";
 
 contract JudgeHelloWorld is JudgeInterface {
 
-    bytes32 public newState;
+    // State
+    // [0-31] isClose flag
+    // [32-63] sequence number
+    // [64-95] "h"
+    // [96-127] "e"
+    // [128,159] "l"
+    // [160,191] "l"
+    // [192, 223] "o"
+    
     bytes32 public temp;
     uint public s;
 

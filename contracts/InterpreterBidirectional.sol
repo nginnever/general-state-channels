@@ -2,15 +2,12 @@ pragma solidity ^0.4.18;
 
 import "./InterpreterInterface.sol";
 
-contract InterpretHelloWorld is InterpreterInterface {
+contract InterpretBidirectional is InterpreterInterface {
     // State
     // [0-31] isClose flag
     // [32-63] sequence number
-    // [64-95] bond
-    // [96-127] "h"
-    // [128,159] "e"
-    // [160,191] "l"
-    // ...
+    // [64-95] balance of party A
+    // [96-127] balance of party B
 
     function interpret(bytes _data) public returns (bool) {
 
@@ -64,13 +61,9 @@ contract InterpretHelloWorld is InterpreterInterface {
         // punish the violator
     }
 
-    function decodeState(bytes state) pure internal returns (bytes32 _h, bytes32 _e, bytes32 _l, bytes32 _l2, bytes32 _o) {
+    function decodeState(bytes state) pure internal {
         assembly {
-            _h := mload(add(state, 64))
-            _e := mload(add(state, 96))
-            _l := mload(add(state, 128))
-            _l2 := mload(add(state, 160))
-            _o := mload(add(state, 192))
+
         }
     }
 

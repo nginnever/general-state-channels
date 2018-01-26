@@ -250,6 +250,11 @@ contract('ChannelManager', function(accounts) {
     await cm.closeWithChallenge(channelId)
     open = await cm.getChannel(channelId)
     console.log('Channel status: ' + open[8][0])
+
+    // hello world game question: State grows in this game so if the word 
+    // was longer than "hello world" the judge would not be able to verify state
+    // general state channels still needs a clever judge like truebit or clever
+    // handling of the state representation. 
   })
 
 })
