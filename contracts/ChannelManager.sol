@@ -89,7 +89,7 @@ contract ChannelManager {
 
     function joinChannel(bytes32 _id) public payable{
         require(channels[_id].partyB == msg.sender);
-        require(msg.value == channels[_id].bond);
+        //require(msg.value == channels[_id].bond);
         channels[_id].booleans[0] = 1;
         channels[_id].bonded += msg.value;
 
@@ -228,8 +228,8 @@ contract ChannelManager {
     function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
         uint dataLength = _data.length;
 
-        uint256 _bonded = channels[_id].bonded;
-        channels[_id].bonded = 0;
+        // uint256 _bonded = channels[_id].bonded;
+        // channels[_id].bonded = 0;
 
         address challenged = _getSig(_data, sig);
 

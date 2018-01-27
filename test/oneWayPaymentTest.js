@@ -1,62 +1,53 @@
-// 'use strict'
+'use strict'
 
-// const utils = require('./helpers/utils')
+const utils = require('./helpers/utils')
 
-// const ChannelManager = artifacts.require("./ChannelManager.sol")
-// const Judge = artifacts.require("./JudgeHelloWorld.sol")
-// const Interpreter = artifacts.require("./InterpretHelloWorld.sol")
+const ChannelManager = artifacts.require("./ChannelManager.sol")
+const Judge = artifacts.require("./JudgePaymentChannel.sol")
+const Interpreter = artifacts.require("./InterpretPaymentChannel.sol")
 
-// let cm
-// let jg
-// let int
+let cm
+let jg
+let int
 
-// let event_args
+let event_args
 
-// contract('ChannelManager', function(accounts) {
-//   it("General State Channel Testing", async function() {
-//     cm = await ChannelManager.new()
-//     jg = await Judge.new()
-//     int = await Interpreter.new()
+contract('Single direction payment channel', function(accounts) {
+  it("Payment Channel", async function() {
+    cm = await ChannelManager.new()
+    jg = await Judge.new()
+    int = await Interpreter.new()
 
 
-//     // State encoding
-//     // We simply replace the sequence number with the receiver balance
-//     // ----------- valid final state -------------- //
-//     var sentinel = padBytes32(web3.toHex(0))
-//     var sequence = padBytes32(web3.toHex(1))
+    // State encoding
+    // We simply replace the sequence number with the receiver balance
+    // ----------- valid state -------------- //
+    var sentinel = padBytes32(web3.toHex(0))
+    var balance = padBytes32(web3.toHex(1))
 
-//     var h = padBytes32(web3.toHex('h'))
-//     var e = padBytes32(web3.toHex('e'))
-//     var l = padBytes32(web3.toHex('l'))
-//     var o = padBytes32(web3.toHex('o'))
+    var msg = sentinel + balance.substr(2, balance.length)
 
-//     console.log('Sequence number: ' + sequence)
+    console.log('State input: ' + msg)
 
-//     msg = sentinel + 
-//               sequence.substr(2, sequence.length) + 
-//               h.substr(2, h.length) + 
-//               e.substr(2, e.length) + 
-//               l.substr(2, l.length) + 
-//               l.substr(2, l.length) +
-//               o.substr(2, o.length)
 
-//     console.log('State input: ' + msg)
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
 
-//     // -------------------------------------------- //
+    var sig = await web3.eth.sign(accounts[0], hmsg)
 
-//     // let msgArr = [msg]
-//     // msgArr.push(padBytes32(web3.toHex('deadbeef')))
-//     // console.log(msgArr)
+    let res = await cm.openChannel(accounts[1], 1337, 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
+    let numChan = await cm.numChannels()
 
-//     // Hashing and signature
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
+    event_args = res.logs[0].args
 
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     // we slice the sig in solidity now to reduce call depth 
-//     // var r = sig1.substr(0,66)
-//     // var s = "0x" + sig1.substr(66,64)
-//     // var v = 28
+    let channelId = event_args.channelId
+    console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
+
+    await cm.joinChannel(channelId, {from: accounts[1], value: web3.toWei(2, 'ether')})
+
+    let open = await cm.getChannel(channelId)
+    console.log('Channel joined, open: ' + open[8][0])
 
 //     await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
@@ -227,26 +218,26 @@
 //     // was longer than "hello world" the judge would not be able to verify state
 //     // general state channels still needs a clever judge like truebit or clever
 //     // handling of the state representation. 
-//   })
+  })
 
-// })
+})
 
 
-// function padBytes32(data){
-//   let l = 66-data.length
-//   let x = data.substr(2, data.length)
+function padBytes32(data){
+  let l = 66-data.length
+  let x = data.substr(2, data.length)
 
-//   for(var i=0; i<l; i++) {
-//     x = 0 + x
-//   }
-//   return '0x' + x
-// }
+  for(var i=0; i<l; i++) {
+    x = 0 + x
+  }
+  return '0x' + x
+}
 
-// function rightPadBytes32(data){
-//   let l = 66-data.length
+function rightPadBytes32(data){
+  let l = 66-data.length
 
-//   for(var i=0; i<l; i++) {
-//     data+=0
-//   }
-//   return data
-// }
+  for(var i=0; i<l; i++) {
+    data+=0
+  }
+  return data
+}
