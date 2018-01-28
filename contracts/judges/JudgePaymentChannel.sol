@@ -5,33 +5,32 @@ import "./JudgeInterface.sol";
 contract JudgePaymentChannel is JudgeInterface {
     // State
     // [0-31] isClose flag
-    // [32-63] balance of receiver
-    // [64-95] bond
+    // [32-63] address sender
+    // [64-95] address receiver
+    // [96-127] bond 
+    // [128-159] balance of receiver
+
+    uint public b;
+    uint public ba;
+    address public a1;
 
     function run(bytes _data) public {
-      // get the signed new state and transition action
-
-      // apply the action to the supplied challenger state
-
-      // check that the outcome of state transition on challenger state
-      // with accused state update is equal to the signed state by the violator
 
       uint256 _b1;
       uint256 _bond;
+      address _a;
+      address _b;
 
       assembly {
-          _b1 := mload(add(_data, 64))
-          _bond := mload(add(_data, 96))
+          _a := mload(add(_data, 64))
+          _b := mload(add(_data, 96))
+          _bond := mload(add(_data, 128))
+          _b1 := mload(add(_data, 160))
       }
 
+      b = _bond;
+      ba = _b1;
+      a1 = _b;
       require(_b1<=_bond && _b1>=0);
     }
-
-    // function decodeState(bytes state) pure internal returns (uint256 _b1, uint256 _b2) {
-    //     assembly {
-    //         _b1 := mload(add(state, 96))
-    //         _b2 := mload(add(state, 128))
-    //     }
-    // }
-
 }

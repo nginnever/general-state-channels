@@ -61,6 +61,10 @@ contract InterpretBidirectional is InterpreterInterface {
         // punish the violator
     }
 
+    function quickClose(bytes _state) public returns (bool) {
+        return true;
+    }
+
     function decodeState(bytes state) pure internal {
         assembly {
 

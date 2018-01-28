@@ -30,7 +30,9 @@
 //     let channelId = event_args.channelId
 //     console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
 
-//     await cm.joinChannel(channelId, {from: accounts[1], value: web3.toWei(2, 'ether')})
+//     var sig2 = await web3.eth.sign(accounts[1], hmsg)
+
+//     await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(2, 'ether')})
 
 //     let open = await cm.getChannel(channelId)
 //     console.log('Channel joined, open: ' + open[8][0])
@@ -88,7 +90,7 @@
 
 //     await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
-//     var sig2 = await web3.eth.sign(accounts[1], hmsg)
+//     sig2 = await web3.eth.sign(accounts[1], hmsg)
 //     // var r2 = sig2.substr(0, 66)
 //     // var s2 = "0x" + sig2.substr(66, 64)
 //     // var v2 = 27
@@ -146,7 +148,9 @@
 //     console.log('{Simulated network send of channelId and state}')
 //     console.log('{Player 2 validating initial state, signing, and joining channel}\n')
 
-//     await cm.joinChannel(channelId, {from: accounts[1], value: web3.toWei(2, 'ether')})
+//     sig2 = await web3.eth.sign(accounts[1], hmsg)
+
+//     await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(2, 'ether')})
 
 //     open = await cm.getChannel(channelId)
 //     console.log('Channel joined, open: ' + open[8][0])

@@ -21,6 +21,8 @@ contract InterpreterInterface {
 
     function timeout(bytes _state) public;
 
+    function quickClose(bytes _data) public returns (bool);
+
     function () payable {
 
     }

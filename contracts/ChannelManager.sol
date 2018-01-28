@@ -87,9 +87,16 @@ contract ChannelManager {
         ChannelCreated(_id, msg.sender, _partyB);
     }
 
-    function joinChannel(bytes32 _id) public payable{
+    function joinChannel(bytes32 _id, bytes _data, bytes sig1, bytes sig2) public payable{
         require(channels[_id].partyB == msg.sender);
+        require(channels[_id].booleans[0] == 0);
         //require(msg.value == channels[_id].bond);
+
+        address party1 = _getSig(_data, sig1);
+        address party2 = _getSig(_data, sig2);
+
+        require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
+
         channels[_id].booleans[0] = 1;
         channels[_id].bonded += msg.value;
 
@@ -108,15 +115,8 @@ contract ChannelManager {
         public 
     {
 
-        // this needs its own function
-        // check this state is signed by both parties
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 h = keccak256(_data);
-
-        bytes32 prefixedHash = keccak256(prefix, h);
-
-        address party1 = ECRecovery.recover(prefixedHash, sig1);
-        address party2 = ECRecovery.recover(prefixedHash, sig2);
+        address party1 = _getSig(_data, sig1);
+        address party2 = _getSig(_data, sig2);
 
         require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
 
@@ -150,6 +150,7 @@ contract ChannelManager {
         // check for this sentinel value
 
         require(channels[_id].interpreter.isClose(_data));
+        require(channels[_id].interpreter.quickClose(_data));
 
         // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
         channels[_id].state = _data;
@@ -248,16 +249,13 @@ contract ChannelManager {
         //     mstore(0x40, add(x,0x44))
         // }
 
-        if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
-            judgeRes = true;
-            channels[_id].booleans[2] = 1;
-
-        } else {
+        if (!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
             channels[_id].disputeAddresses[0] = challenged;
             channels[_id].disputeAddresses[1] = msg.sender;
+
         }
     }
 

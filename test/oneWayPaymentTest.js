@@ -21,203 +21,138 @@ contract('Single direction payment channel', function(accounts) {
 
     // State encoding
     // We simply replace the sequence number with the receiver balance
+    // Account 0 is the bonded hub making signed payments
+    // Account 1 is the receiver of payments, they may sign and close any payment
+
     // ----------- valid state -------------- //
     var sentinel = padBytes32(web3.toHex(0))
-    var balance = padBytes32(web3.toHex(1))
+    var addressA = padBytes32(accounts[0])
+    var addressB = padBytes32(accounts[1])
+    var bond = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
+    var balance = padBytes32(web3.toHex(0))
 
-    var msg = sentinel + balance.substr(2, balance.length)
+    var msg = sentinel +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        bond.substr(2, bond.length) + 
+        balance.substr(2, balance.length)
 
     console.log('State input: ' + msg)
 
 
     // Hashing and signature
-    hmsg = web3.sha3(msg, {encoding: 'hex'})
+    var hmsg = web3.sha3(msg, {encoding: 'hex'})
     console.log('hashed msg: ' + hmsg)
 
-    var sig = await web3.eth.sign(accounts[0], hmsg)
+    var sig1 = await web3.eth.sign(accounts[0], hmsg)
 
-    let res = await cm.openChannel(accounts[1], 1337, 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
+    let res = await cm.openChannel(accounts[1], 10, 10, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
     let numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
 
     let channelId = event_args.channelId
     console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
+    console.log('{Simulated network send from hub to receiver of initial state}')
+    
+    var sig2 = await web3.eth.sign(accounts[1], hmsg)
 
-    await cm.joinChannel(channelId, {from: accounts[1], value: web3.toWei(2, 'ether')})
+    await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1]})
 
     let open = await cm.getChannel(channelId)
     console.log('Channel joined, open: ' + open[8][0])
 
-//     await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
+    await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
-//     var sig2 = await web3.eth.sign(accounts[1], hmsg)
-//     // var r2 = sig2.substr(0, 66)
-//     // var s2 = "0x" + sig2.substr(66, 64)
-//     // var v2 = 27
-
-//     await cm.closeChannel(channelId, msg, sig1, sig2)
-
-//     open = await cm.getChannel(channelId)
-
-//     console.log('Channel closed by two party signature on close sentinel')
-
-//     console.log('Signing address: ' + accounts[0])
-
-//     let load = await jg.temp()
-//     console.log('assembly data stored: ' + load)
-
-//     let _seq = await jg.s()
-//     console.log('recovered sequence num: ' + _seq)
-
-//     console.log('Judge resolution: ' + open[8][2])
-
-//     // build an invalid state, signed by one of the parties. Excersize the judge so that it
-//     // may fail and set the violator and state of violation. Then use the interpreter proxy call
-//     // to resolve the action of sending the violators bond to the challenger.
-
-//     console.log('\n')
-//     console.log('Starting game...')
-//     // Initial State
-
-//     sentinel = padBytes32(web3.toHex(0))
-//     sequence = padBytes32(web3.toHex(1))
-
-//     h = padBytes32(web3.toHex('h'))
-
-//     msg = sentinel + 
-//               sequence.substr(2, sequence.length) + 
-//               h.substr(2, h.length)
-
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
-
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     //console.log('State signature: ' + sig1)
-
-//     console.log('\nState_0: ' + msg)
-//     // Open new Channel
-
-//     res = await cm.openChannel(accounts[1], 1337, 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
-//     numChan = await cm.numChannels()
-
-//     event_args = res.logs[0].args
-
-//     channelId = event_args.channelId
-//     console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
-
-//     console.log('{Simulated network send of channelId and state}')
-//     console.log('{Player 2 validating initial state, signing, and joining channel}\n')
-
-//     await cm.joinChannel(channelId, {from: accounts[1], value: web3.toWei(2, 'ether')})
-
-//     open = await cm.getChannel(channelId)
-//     console.log('Channel joined, open: ' + open[8][0])
+    open = await cm.getChannel(channelId)
 
 
 
-//     // State 2
+    let _seq = await jg.b()
+    let _addr = await jg.a1()
+    console.log('recovered bond num: ' + _seq)
+    console.log('recovered addressA: ' + _addr)
+    console.log('account[0]: ' + accounts[1])
+    console.log('Judge resolution: ' + open[8][2])
 
-//     console.log('Starting game...\n')
-//     console.log('Player 2 assembling state_1 _he_')
-//     // Initial State
+    console.log('\n')
+    console.log('Starting payments...')
 
-//     sentinel = padBytes32(web3.toHex(0))
-//     sequence = padBytes32(web3.toHex(2))
+    // State 1
 
-//     msg = sentinel + 
-//               sequence.substr(2, sequence.length) + 
-//               h.substr(2, h.length) +
-//               e.substr(2, e.length)
+    sentinel = padBytes32(web3.toHex(0))
+    addressA = accounts[0]
+    addressB = accounts[1]
+    bond = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
+    balance = padBytes32(web3.toHex(web3.toWei(1, 'ether')))
 
-//     console.log('State_1: ' + msg)
+    msg = sentinel + 
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        bond.substr(2, bond.length) + 
+        balance.substr(2, balance.length)
 
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
 
-//     sig2 = await web3.eth.sign(accounts[1], hmsg)
-//     //console.log('State signature: ' + sig2)
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    //console.log('State signature: ' + sig1)
 
-//     console.log('{Simulated network send of player 2 State_1}')
-//     console.log('{Player 1 validating State_1, and signing}\n')
-
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-
-
-//     //console.log('State signature: ' + sig1)
-//     // State 3
-
-//     console.log('Player 1 assembling state_2 _hel_')
-//     console.log('Player also signals to checkpoint this state transitition')
-//     // Initial State
-
-//     sentinel = padBytes32(web3.toHex(0))
-//     sequence = padBytes32(web3.toHex(3))
-
-//     msg = sentinel + 
-//               sequence.substr(2, sequence.length) + 
-//               h.substr(2, h.length) +
-//               e.substr(2, e.length) +
-//               l.substr(2, l.length)
-
-//     console.log('State_2: ' + msg)
-
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
-
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     //console.log('State signature: ' + sig2)
-
-//     console.log('{Simulated network send of player 1 State_2}')
-//     console.log('{Player 2 validating State_2, and signing with agreement to checkpoint}\n')
-
-//     sig2 = await web3.eth.sign(accounts[1], hmsg)
-
-//     await cm.checkpointState(channelId, msg, sig1, sig2, sequence)
-//     console.log('State checkpointed\n')
+    console.log('\nState_1: ' + msg)
 
 
-//     // State 4
+    console.log('{Simulated network send of payment state:action 1:add}')
+    console.log('{Receiver validating state, and signing}\n')
 
-//     console.log('Player 2 incorrectly assembling state_3 _help_')
-//     // Initial State
+    // State 2
 
-//     sentinel = padBytes32(web3.toHex(0))
-//     sequence = padBytes32(web3.toHex(4))
+    sentinel = padBytes32(web3.toHex(0))
+    var addressA = padBytes32(accounts[0])
+    var addressB = padBytes32(accounts[1])
+    var bond = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
+    var balance = padBytes32(web3.toHex(web3.toWei(3, 'ether')))
 
-//     var p = padBytes32(web3.toHex('p'))
+    var msg = sentinel + 
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        bond.substr(2, bond.length) + 
+        balance.substr(2, balance.length)
 
-//     msg = sentinel + 
-//               sequence.substr(2, sequence.length) + 
-//               h.substr(2, h.length) +
-//               e.substr(2, e.length) +
-//               l.substr(2, l.length) +
-//               p.substr(2, p.length)
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
 
-//     console.log('State_3: ' + msg)
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    //console.log('State signature: ' + sig1)
 
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
+    console.log('\nState_2: ' + msg)
 
-//     sig2 = await web3.eth.sign(accounts[1], hmsg)
-//     //console.log('State signature: ' + sig2)
 
-//     console.log('{Simulated network send of player 2 State_3}')
-//     console.log('{Player 2 validating State_2, and catches an error localy}')
-//     console.log('Closing channel with judge')
+    console.log('{Simulated network send of payment state:action 2:add}')
+    console.log('{Receiver validating state, and signing}\n')
 
-//     await cm.exerciseJudge(channelId, 'run(bytes)', sig2, msg)
-//     open = await cm.getChannel(channelId)
-//     console.log('Judge resolution: ' + open[8][2])
+    console.log('Closing Channel...')
 
-//     await cm.closeWithChallenge(channelId)
-//     open = await cm.getChannel(channelId)
-//     console.log('Channel status: ' + open[8][0])
+    await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
-//     // hello world game question: State grows in this game so if the word 
-//     // was longer than "hello world" the judge would not be able to verify state
-//     // general state channels still needs a clever judge like truebit or clever
-//     // handling of the state representation. 
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+
+    console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+
+    await cm.closeChannel(channelId, msg, sig1, sig2)
+
+    console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+
+    open = await cm.getChannel(channelId)
+
+    console.log('Channel closed by two party signature on close sentinel')
+
+    _seq = await int.ba()
+    console.log('recovered balance num: ' + _seq)
+
+    console.log('Channel status: ' + open[8][0])
+
   })
 
 })

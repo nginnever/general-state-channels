@@ -64,6 +64,10 @@ contract InterpretHelloWorld is InterpreterInterface {
         // punish the violator
     }
 
+    function quickClose(bytes _state) public returns (bool) {
+        return true;
+    }
+
     function decodeState(bytes state) pure internal returns (bytes32 _h, bytes32 _e, bytes32 _l, bytes32 _l2, bytes32 _o) {
         assembly {
             _h := mload(add(state, 64))
