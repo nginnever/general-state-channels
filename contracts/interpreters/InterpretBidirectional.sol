@@ -6,8 +6,10 @@ contract InterpretBidirectional is InterpreterInterface {
     // State
     // [0-31] isClose flag
     // [32-63] sequence number
-    // [64-95] balance of party A
-    // [96-127] balance of party B
+    // [64-95] addressA
+    // [96-127] addressB 
+    // [128-159] balance of party A
+    // [160-191] balance of party B
 
     function interpret(bytes _data) public returns (bool) {
 

@@ -22,7 +22,7 @@
 //     var hmsg = web3.sha3(msg, {encoding: 'hex'})
 //     var sig1 = await web3.eth.sign(accounts[0], hmsg)
 
-//     let res = await cm.openChannel(accounts[1], 1337, 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
+//     let res = await cm.openChannel(accounts[1], web3.toWei(2, 'ether'), 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
 //     let numChan = await cm.numChannels()
 
 //     event_args = res.logs[0].args
@@ -137,7 +137,7 @@
 //     console.log('\nState_0: ' + msg)
 //     // Open new Channel
 
-//     res = await cm.openChannel(accounts[1], 1337, 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
+//     res = await cm.openChannel(accounts[1], web3.toWei(2, 'ether'), 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(2, 'ether')})
 //     numChan = await cm.numChannels()
 
 //     event_args = res.logs[0].args

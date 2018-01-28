@@ -79,6 +79,7 @@ contract InterpretPaymentChannel is InterpreterInterface {
         a1 = _b;
         require(_b1<=_bond && _b1>=0);
 
+        require(_bond == this.balance);
         _b.send(_b1);
         _a.send(_bond-_b1);
         return true;

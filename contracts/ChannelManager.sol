@@ -31,7 +31,7 @@ contract ChannelManager {
 
     function openChannel(
         address _partyB, 
-        uint _duration, 
+        uint _bond, 
         uint _settlementPeriod, 
         address _interpreter, 
         address _judge, 
@@ -67,7 +67,7 @@ contract ChannelManager {
         Channel memory _channel = Channel(
             msg.sender,
             _partyB,
-            msg.value,
+            _bond,
             msg.value,
             candidateJudgeContract,
             candidateInterpreterContract,
@@ -90,7 +90,7 @@ contract ChannelManager {
     function joinChannel(bytes32 _id, bytes _data, bytes sig1, bytes sig2) public payable{
         require(channels[_id].partyB == msg.sender);
         require(channels[_id].booleans[0] == 0);
-        //require(msg.value == channels[_id].bond);
+        require(msg.value == channels[_id].bond);
 
         address party1 = _getSig(_data, sig1);
         address party2 = _getSig(_data, sig2);
