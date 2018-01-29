@@ -89,69 +89,71 @@ contract('Bi-direction payment channel', function(accounts) {
 
     // State 1
 
-    // sentinel = padBytes32(web3.toHex(0))
-    // addressA = accounts[0]
-    // addressB = accounts[1]
-    // bond = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
-    // balance = padBytes32(web3.toHex(web3.toWei(1, 'ether')))
+    sentinel = padBytes32(web3.toHex(0))
+    sequence = padBytes32(web3.toHex(0))
+    addressA = padBytes32(accounts[0])
+    addressB = padBytes32(accounts[1])
+    balanceA = padBytes32(web3.toHex(web3.toWei(9, 'ether')))
+    balanceB = padBytes32(web3.toHex(web3.toWei(6, 'ether')))
 
-    // msg = sentinel + 
-    //     addressA.substr(2, addressA.length) +
-    //     addressB.substr(2, addressB.length) +
-    //     bond.substr(2, bond.length) + 
-    //     balance.substr(2, balance.length)
+    msg = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
 
-    // hmsg = web3.sha3(msg, {encoding: 'hex'})
-    // console.log('hashed msg: ' + hmsg)
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
 
-    // sig1 = await web3.eth.sign(accounts[0], hmsg)
-    // //console.log('State signature: ' + sig1)
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
 
-    // console.log('\nState_1: ' + msg)
-
-
-    // console.log('{Simulated network send of payment state:action 1:add}')
-    // console.log('{Receiver validating state, and signing}\n')
-
-    // // State 2
-
-    // sentinel = padBytes32(web3.toHex(0))
-    // var addressA = padBytes32(accounts[0])
-    // var addressB = padBytes32(accounts[1])
-    // var bond = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
-    // var balance = padBytes32(web3.toHex(web3.toWei(3, 'ether')))
-
-    // var msg = sentinel + 
-    //     addressA.substr(2, addressA.length) +
-    //     addressB.substr(2, addressB.length) +
-    //     bond.substr(2, bond.length) + 
-    //     balance.substr(2, balance.length)
-
-    // hmsg = web3.sha3(msg, {encoding: 'hex'})
-    // console.log('hashed msg: ' + hmsg)
-
-    // sig1 = await web3.eth.sign(accounts[0], hmsg)
-    // //console.log('State signature: ' + sig1)
-
-    // console.log('\nState_2: ' + msg)
+    console.log('\nState_1: ' + msg)
 
 
-    // console.log('{Simulated network send of payment state:action 2:add}')
-    // console.log('{Receiver validating state, and signing}\n')
+    console.log('{Simulated network send of payment state:action 1:add B, 1:sub A}')
+    console.log('{Receiver validating state, and signing}\n')
 
-    // console.log('Closing Channel...')
+    var sig2 = await web3.eth.sign(accounts[1], hmsg)
+
+    // State 2
+
+    sentinel = padBytes32(web3.toHex(1))
+    sequence = padBytes32(web3.toHex(0))
+    addressA = padBytes32(accounts[0])
+    addressB = padBytes32(accounts[1])
+    balanceA = padBytes32(web3.toHex(web3.toWei(11, 'ether')))
+    balanceB = padBytes32(web3.toHex(web3.toWei(4, 'ether')))
+
+    msg = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
+
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+
+    console.log('\nState_2: ' + msg)
+
+
+    console.log('{Simulated network send of payment state:action 2:add A, 2:sub B}')
+    console.log('{Receiver validating state, and signing}\n')
+
+    console.log('Closing Channel...')
 
     // await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
-    // sig2 = await web3.eth.sign(accounts[1], hmsg)
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
 
-    // console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
-    // console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+    console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
 
-    // await cm.closeChannel(channelId, msg, sig1, sig2)
+    await cm.closeChannel(channelId, msg, sig1, sig2)
 
-    // console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
-    // console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+    console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
 
     // open = await cm.getChannel(channelId)
 

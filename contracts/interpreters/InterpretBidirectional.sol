@@ -11,6 +11,9 @@ contract InterpretBidirectional is InterpreterInterface {
     // [128-159] balance of party A
     // [160-191] balance of party B
 
+    uint256 public b1;
+    uint256 public b2;
+
     function interpret(bytes _data) public returns (bool) {
 
       return true;
@@ -64,12 +67,29 @@ contract InterpretBidirectional is InterpreterInterface {
     }
 
     function quickClose(bytes _state) public returns (bool) {
+
+        uint256 _b1;
+        uint256 _b2;
+        address _a;
+        address _b;
+
+        (_b1, _b2, _a, _b) = decodeState(_state);
+
+        b1 = _b1;
+        b2 = _b2;
+
+        require(_b1 + _b2 == this.balance);
+        _b.send(_b2);
+        _a.send(_b1);
         return true;
     }
 
-    function decodeState(bytes state) pure internal {
+    function decodeState(bytes state) pure internal returns (uint256 _b1, uint256 _b2, address _a, address _b) {
         assembly {
-
+            _a := mload(add(state, 96))
+            _b := mload(add(state, 128))
+            _b1 := mload(add(state, 160))
+            _b2 := mload(add(state, 192))
         }
     }
 
