@@ -153,16 +153,176 @@ contract('Bi-direction payment channel', function(accounts) {
     await cm.closeChannel(channelId, msg, sig1, sig2)
 
     console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
-    console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+    console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
 
-    // open = await cm.getChannel(channelId)
 
-    // console.log('Channel closed by two party signature on close sentinel')
+    // Invalid state challenge case
 
-    // _seq = await int.ba()
-    // console.log('recovered balance num: ' + _seq)
+    // ----------- valid state -------------- //
+    sentinel = padBytes32(web3.toHex(0))
+    sequence = padBytes32(web3.toHex(0))
+    addressA = padBytes32(accounts[0])
+    addressB = padBytes32(accounts[1])
+    balanceA = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
+    balanceB = padBytes32(web3.toHex(web3.toWei(5, 'ether')))
 
-    // console.log('Channel status: ' + open[8][0])
+    msg = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
+
+    console.log('State input: ' + msg)
+
+
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
+
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+
+    res = await cm.openChannel(accounts[1], web3.toWei(5, 'ether'), 0, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    numChan = await cm.numChannels()
+
+    event_args = res.logs[0].args
+
+    channelId = event_args.channelId
+    console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
+    console.log('{Simulated network send from hub to receiver of initial state}')
+    
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+
+    await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(5, 'ether')})
+
+    open = await cm.getChannel(channelId)
+    console.log('Channel joined, open: ' + open[8][0])
+
+    // invalid state
+    sentinel = padBytes32(web3.toHex(0))
+    sequence = padBytes32(web3.toHex(1))
+    addressA = padBytes32(accounts[0])
+    addressB = padBytes32(accounts[1])
+    balanceA = padBytes32(web3.toHex(web3.toWei(100, 'ether')))
+    balanceB = padBytes32(web3.toHex(web3.toWei(5, 'ether')))
+
+    msg = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
+
+    console.log('State input: ' + msg)
+
+
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
+
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+
+    console.log('{Simulated network send from hub to receiver of invalid state}')
+    console.log('{requesting a valid state or starting settlement period}\n')
+
+    console.log('Party B excersizing judge to begin settlement')
+
+    //await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
+
+    //await cm.closeWithChallenge(channelId)
+
+    await cm.start
+
+    open = await cm.getChannel(channelId)
+
+
+
+    _seq = await jg.b1()
+    _addr = await jg.b2()
+    console.log('recovered balance A: ' + _seq)
+    console.log('recovered balance B: ' + _addr)
+    console.log('account[0]: ' + accounts[1])
+    console.log('Judge resolution: ' + open[8][2])
+
+    console.log('\n')
+
+    console.log('Party B starting settleState')
+    sentinel = padBytes32(web3.toHex(0))
+    sequence = padBytes32(web3.toHex(2))
+    addressA = padBytes32(accounts[0])
+    addressB = padBytes32(accounts[1])
+    balanceA = padBytes32(web3.toHex(web3.toWei(9, 'ether')))
+    balanceB = padBytes32(web3.toHex(web3.toWei(6, 'ether')))
+
+    msg = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
+
+    console.log('State input: ' + msg)
+
+
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+
+    await cm.startSettleState(channelId, 'run(bytes)', sig2, msg, 2)
+
+    open = await cm.getChannel(channelId)
+
+    console.log('settlement period ends: ' + open[7])
+    console.log('current time stamp: ' + Math.round((new Date()).getTime() / 1000) + '\n')
+
+    console.log('Party A challenging settle state with higher sequence num')
+    sentinel = padBytes32(web3.toHex(0))
+    sequence = padBytes32(web3.toHex(3))
+    addressA = padBytes32(accounts[0])
+    addressB = padBytes32(accounts[1])
+    balanceA = padBytes32(web3.toHex(web3.toWei(8, 'ether')))
+    balanceB = padBytes32(web3.toHex(web3.toWei(7, 'ether')))
+
+    msg = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
+
+    console.log('State input: ' + msg)
+
+
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
+
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+
+    await cm.challengeSettleState(channelId, msg, sig1, 'run(bytes)', 3)
+
+    open = await cm.getChannel(channelId)
+
+    console.log('\nchallenged new state: ' + open[10])
+    console.log('\nclosing channel with settle timeout')
+
+    await cm.closeWithTimeout(channelId);
+
+    open = await cm.getChannel(channelId)
+
+    _seq = await int.b1()
+    _addr = await int.b2()
+    console.log('recovered balance A: ' + _seq)
+    console.log('recovered balance B: ' + _addr)
+    console.log('Channel status: ' + open[8][0])
+    // TODO decide what to do with invalid state sends. Clients should probably just
+    // respond saying they wont sign it, please give me a correct one or I'll close 
+    // with previous state.
+
+    // challenge settle State
+    // Here we build a case where the two parties can not agree on a state that has
+    // a close boolean sentinel. The parties must start a settlement period where the
+    // last highest sequence agreed upon non-close sentinel state may be presented
 
   })
 

@@ -59,11 +59,27 @@ contract InterpretBidirectional is InterpreterInterface {
     }
 
     function challenge(address _violator, bytes _state) public {
-        // punish the violator
+        // we do not close with a challenge for bi-directional. We assume
+        // that the client will close with a settlement period on last good state
+        // instead
+        require(1==2);
     }
 
     function timeout(bytes _state) public {
-        // punish the violator
+
+        uint256 _b1;
+        uint256 _b2;
+        address _a;
+        address _b;
+
+        (_b1, _b2, _a, _b) = decodeState(_state);
+
+        b1 = _b1;
+        b2 = _b2;
+
+        require(_b1 + _b2 == this.balance);
+        _b.send(_b2);
+        _a.send(_b1);
     }
 
     function quickClose(bytes _state) public returns (bool) {

@@ -173,24 +173,43 @@ contract ChannelManager {
 
         // handle timeout logic
         channels[_id].interpreter.timeout(channels[_id].state);
+        channels[_id].booleans[0] = 0;
     }
 
-    function challengeSettleState(bytes32 _id, bytes _data, bytes sig1, bytes sig2) public {
+    function challengeSettleState(bytes32 _id, bytes _data, bytes sig, string _method, uint256 _seqNum) public {
         // require the channel to be in a settling state
         require(channels[_id].booleans[1] == 1);
+        require(channels[_id].settlementPeriodEnd <= now);
+        uint dataLength = _data.length;
+
         require(channels[_id].settlementPeriodEnd < now);
 
-        // check this state is signed by both parties
-        address party1 = _getSig(_data, sig1);
-        address party2 = _getSig(_data, sig2);
+        // check this state is signed by one party
+        address initiator = _getSig(_data, sig);
 
-        require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
+        require(initiator == channels[_id].partyA || initiator == channels[_id].partyB);
+
+        if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
+            judgeRes = true;
+            channels[_id].booleans[2] = 1;
+
+        } else {
+            judgeRes = false;
+            channels[_id].booleans[2] = 0;
+            channels[_id].state = _data;
+            channels[_id].disputeAddresses[0] = initiator;
+            channels[_id].disputeAddresses[1] = msg.sender;
+        }
+
+        require(channels[_id].booleans[2] == 1);
 
         // we also alow the sequence to be equal to allow continued game
         require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].sequenceNum));
+        require(channels[_id].interpreter.isSequenceEqual(_data, _seqNum));
 
-        channels[_id].booleans[1] = 0;
-        channels[_id].settlementPeriodEnd = 0;
+        channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
+        channels[_id].state = _data;
+        channels[_id].sequenceNum = _seqNum;
 
     }
 
@@ -220,9 +239,11 @@ contract ChannelManager {
         }
 
         require(channels[_id].booleans[2] == 1);
-        require(channels[_id].interpreter.isSequenceHigher(_data, _seqNum));
+        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].sequenceNum));
+        require(channels[_id].interpreter.isSequenceEqual(_data, _seqNum));
 
         channels[_id].booleans[1] = 1;
+        channels[_id].sequenceNum = _seqNum;
         channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
     }
 
