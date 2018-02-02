@@ -30,17 +30,19 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
-    function isSequenceHigher(bytes _data, uint _seq) public returns (bool) {
-        uint isHigher;
+    function isSequenceHigher(bytes _data1, bytes _data2) public returns (bool) {
+        uint isHigher1;
+        uint isHigher2;
 
         assembly {
-            isHigher := mload(add(_data, 64))
+            isHigher1 := mload(add(_data1, 64))
+            isHigher2 := mload(add(_data2, 64))
         }
 
         // allow the sequence number to be equal to that of the settled state stored.
         // this will allow a counterparty signature
 
-        require(isHigher >= _seq);
+        require(isHigher1 > isHigher2);
         return true;
     }
 

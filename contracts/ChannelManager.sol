@@ -20,7 +20,6 @@ contract ChannelManager {
         uint8[3] booleans; // ['isChannelOpen', 'settlingPeriodStarted', 'judgeResolution']
         address[2] disputeAddresses;
         bytes state;
-        uint sequenceNum;
     }
 
     mapping(bytes32 => Channel) channels;
@@ -74,8 +73,7 @@ contract ChannelManager {
             0,
             [0,0,1],
             [address(0x0),address(0x0)],
-            _data,
-            0
+            _data
         );
 
         numChannels++;
@@ -109,8 +107,7 @@ contract ChannelManager {
         bytes32 _id, 
         bytes _data, 
         bytes sig1,
-        bytes sig2,
-        uint _seq) 
+        bytes sig2) 
         public 
     {
 
@@ -119,12 +116,10 @@ contract ChannelManager {
 
         require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
 
-        require(channels[_id].interpreter.isSequenceEqual(_data, _seq));
-        require(channels[_id].sequenceNum < _seq);
+        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
         // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
         channels[_id].state = _data;
-        channels[_id].sequenceNum = _seq;
     }
 
     // Fast close: Both parties agreed to close
@@ -167,14 +162,14 @@ contract ChannelManager {
     }
 
     function closeWithTimeout(bytes32 _id) public {
-        require(channels[_id].settlementPeriodEnd >= now);
+        require(channels[_id].settlementPeriodEnd <= now);
 
         // handle timeout logic
         channels[_id].interpreter.quickClose(channels[_id].state);
         channels[_id].booleans[0] = 0;
     }
 
-    function challengeSettleState(bytes32 _id, bytes _data, bytes sig1, bytes sig2, string _method, uint256 _seqNum) public {
+    function challengeSettleState(bytes32 _id, bytes _data, bytes sig1, bytes sig2, string _method) public {
         // require the channel to be in a settling state
         require(channels[_id].booleans[1] == 1);
         require(channels[_id].settlementPeriodEnd <= now);
@@ -202,16 +197,13 @@ contract ChannelManager {
         require(channels[_id].booleans[2] == 1);
 
         // we also alow the sequence to be equal to allow continued game
-        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].sequenceNum));
-        require(channels[_id].interpreter.isSequenceEqual(_data, _seqNum));
+        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
         channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
         channels[_id].state = _data;
-        channels[_id].sequenceNum = _seqNum;
-
     }
 
-    function startSettleState(bytes32 _id, string _method, bytes sig1, bytes sig2, bytes _data, uint256 _seqNum) public {
+    function startSettleState(bytes32 _id, string _method, bytes sig1, bytes sig2, bytes _data) public {
         require(channels[_id].booleans[1] == 0);
 
         uint dataLength = _data.length;
@@ -237,11 +229,9 @@ contract ChannelManager {
         }
 
         require(channels[_id].booleans[2] == 1);
-        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].sequenceNum));
-        require(channels[_id].interpreter.isSequenceEqual(_data, _seqNum));
+        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
         channels[_id].booleans[1] = 1;
-        channels[_id].sequenceNum = _seqNum;
         channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
     }
 
@@ -293,8 +283,7 @@ contract ChannelManager {
         uint256 settlementPeriodEnd,
         uint8[3] booleans,
         address[2] disputeAddresses,
-        bytes state,
-        uint sequenceNum
+        bytes state
     ) {
 
         Channel storage ch = channels[_id];
@@ -310,8 +299,7 @@ contract ChannelManager {
             ch.settlementPeriodEnd,
             ch.booleans,
             ch.disputeAddresses,
-            ch.state,
-            ch.sequenceNum
+            ch.state
         );
     }
 

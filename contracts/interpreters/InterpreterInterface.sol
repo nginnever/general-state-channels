@@ -13,7 +13,7 @@ contract InterpreterInterface {
 
     function isClose(bytes _data) public returns (bool);
 
-    function isSequenceHigher(bytes _data, uint _seq) public returns (bool);
+    function isSequenceHigher(bytes _data1, bytes _data2) public returns (bool);
 
     function isSequenceEqual(bytes _data, uint _seq) public returns (bool);
 

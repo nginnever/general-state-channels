@@ -32,13 +32,6 @@ contract('Bi-direction payment channel', function(accounts) {
     // [balanceB]
 
     // ----------- valid state -------------- //
-    var sentinel
-    var sequence
-    var addressA
-    var addressB
-    var balanceA
-    var balanceB
-
     var msg
 
     msg = generateState(0, 0, accounts[0], accounts[1], 10, 5)
@@ -205,7 +198,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     sig2 = await web3.eth.sign(accounts[1], hmsg)
 
-    await cm.startSettleState(channelId, 'run(bytes)', sig1, sig2, msg, 2)
+    await cm.startSettleState(channelId, 'run(bytes)', sig1, sig2, msg)
 
     open = await cm.getChannel(channelId)
 
@@ -213,12 +206,6 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('current time stamp: ' + Math.round((new Date()).getTime() / 1000) + '\n')
 
     console.log('Party A challenging settle state with higher sequence num')
-    sentinel = padBytes32(web3.toHex(0))
-    sequence = padBytes32(web3.toHex(3))
-    addressA = padBytes32(accounts[0])
-    addressB = padBytes32(accounts[1])
-    balanceA = padBytes32(web3.toHex(web3.toWei(8, 'ether')))
-    balanceB = padBytes32(web3.toHex(web3.toWei(7, 'ether')))
 
     msg = generateState(0, 3, accounts[0], accounts[1], 8, 7)
 
@@ -231,12 +218,15 @@ contract('Bi-direction payment channel', function(accounts) {
     sig1 = await web3.eth.sign(accounts[0], hmsg)
     sig2 = await web3.eth.sign(accounts[1], hmsg)
 
-    await cm.challengeSettleState(channelId, msg, sig1, sig2, 'run(bytes)', 3)
+    await cm.challengeSettleState(channelId, msg, sig1, sig2, 'run(bytes)')
 
     open = await cm.getChannel(channelId)
 
     console.log('\nchallenged new state: ' + open[10])
     console.log('\nclosing channel with settle timeout')
+
+    console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
 
     await cm.closeWithTimeout(channelId);
 
@@ -246,6 +236,8 @@ contract('Bi-direction payment channel', function(accounts) {
     _addr = await int.b2()
     console.log('recovered balance A: ' + _seq)
     console.log('recovered balance B: ' + _addr)
+    console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
     console.log('Channel status: ' + open[8][0])
     // TODO decide what to do with invalid state sends. Clients should probably just
     // respond saying they wont sign it, please give me a correct one or I'll close 
