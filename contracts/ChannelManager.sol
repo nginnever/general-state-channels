@@ -40,7 +40,6 @@ contract ChannelManager {
         public 
         payable 
     {
-        // Open channel should run an initial state against the judge to make sure it is okay.
 
         JudgeInterface candidateJudgeContract = JudgeInterface(_judge);
         InterpreterInterface candidateInterpreterContract = InterpreterInterface(_interpreter);
@@ -75,7 +74,7 @@ contract ChannelManager {
             0,
             [0,0,1],
             [address(0x0),address(0x0)],
-            _data, 
+            _data,
             0
         );
 
@@ -121,8 +120,7 @@ contract ChannelManager {
         require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
 
         require(channels[_id].interpreter.isSequenceEqual(_data, _seq));
-        //require(!channels[_id].interpreter.isClose(_data));
-        //require(channels[_id].sequenceNum < seq);
+        require(channels[_id].sequenceNum < _seq);
 
         // run the judge to be sure this is a valid state transition? does this matter if it was agreed upon?
         channels[_id].state = _data;
@@ -172,11 +170,11 @@ contract ChannelManager {
         require(channels[_id].settlementPeriodEnd >= now);
 
         // handle timeout logic
-        channels[_id].interpreter.timeout(channels[_id].state);
+        channels[_id].interpreter.quickClose(channels[_id].state);
         channels[_id].booleans[0] = 0;
     }
 
-    function challengeSettleState(bytes32 _id, bytes _data, bytes sig, string _method, uint256 _seqNum) public {
+    function challengeSettleState(bytes32 _id, bytes _data, bytes sig1, bytes sig2, string _method, uint256 _seqNum) public {
         // require the channel to be in a settling state
         require(channels[_id].booleans[1] == 1);
         require(channels[_id].settlementPeriodEnd <= now);
@@ -184,10 +182,10 @@ contract ChannelManager {
 
         require(channels[_id].settlementPeriodEnd < now);
 
-        // check this state is signed by one party
-        address initiator = _getSig(_data, sig);
+        address partyA = _getSig(_data, sig1);
+        address partyB = _getSig(_data, sig2);
 
-        require(initiator == channels[_id].partyA || initiator == channels[_id].partyB);
+        require(partyA == channels[_id].partyA && partyB == channels[_id].partyB);
 
         if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
@@ -197,8 +195,8 @@ contract ChannelManager {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
-            channels[_id].disputeAddresses[0] = initiator;
-            channels[_id].disputeAddresses[1] = msg.sender;
+            // channels[_id].disputeAddresses[0] = initiator;
+            // channels[_id].disputeAddresses[1] = msg.sender;
         }
 
         require(channels[_id].booleans[2] == 1);
@@ -213,16 +211,16 @@ contract ChannelManager {
 
     }
 
-    function startSettleState(bytes32 _id, string _method, bytes sig, bytes _data, uint256 _seqNum) public {
+    function startSettleState(bytes32 _id, string _method, bytes sig1, bytes sig2, bytes _data, uint256 _seqNum) public {
         require(channels[_id].booleans[1] == 0);
 
         uint dataLength = _data.length;
 
         //require(!channels[_id].interpreter.isClose(_data));
-        // check this state is signed by one party
-        address initiator = _getSig(_data, sig);
+        address partyA = _getSig(_data, sig1);
+        address partyB = _getSig(_data, sig2);
 
-        require(initiator == channels[_id].partyA || initiator == channels[_id].partyB);
+        require(partyA == channels[_id].partyA && partyB == channels[_id].partyB);
 
         // In order to start settling we run the judge to be sure this is a valid state transition
 
@@ -234,8 +232,8 @@ contract ChannelManager {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
-            channels[_id].disputeAddresses[0] = initiator;
-            channels[_id].disputeAddresses[1] = msg.sender;
+            // channels[_id].disputeAddresses[0] = initiator;
+            // channels[_id].disputeAddresses[1] = msg.sender;
         }
 
         require(channels[_id].booleans[2] == 1);

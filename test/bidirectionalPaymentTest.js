@@ -32,21 +32,16 @@ contract('Bi-direction payment channel', function(accounts) {
     // [balanceB]
 
     // ----------- valid state -------------- //
-    var sentinel = padBytes32(web3.toHex(0))
-    var sequence = padBytes32(web3.toHex(0))
-    var addressA = padBytes32(accounts[0])
-    var addressB = padBytes32(accounts[1])
-    var balanceA = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
-    var balanceB = padBytes32(web3.toHex(web3.toWei(5, 'ether')))
+    var sentinel
+    var sequence
+    var addressA
+    var addressB
+    var balanceA
+    var balanceB
 
-    var msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    var msg
 
-    console.log('State input: ' + msg)
+    msg = generateState(0, 0, accounts[0], accounts[1], 10, 5)
 
 
     // Hashing and signature
@@ -62,7 +57,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     let channelId = event_args.channelId
     console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
-    console.log('{Simulated network send from hub to receiver of initial state}')
+    console.log('{Simulated network send from A to receiver of initial state}')
     
     var sig2 = await web3.eth.sign(accounts[1], hmsg)
 
@@ -88,20 +83,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('Starting payments...')
 
     // State 1
-
-    sentinel = padBytes32(web3.toHex(0))
-    sequence = padBytes32(web3.toHex(0))
-    addressA = padBytes32(accounts[0])
-    addressB = padBytes32(accounts[1])
-    balanceA = padBytes32(web3.toHex(web3.toWei(9, 'ether')))
-    balanceB = padBytes32(web3.toHex(web3.toWei(6, 'ether')))
-
-    msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    msg = generateState(0, 1, accounts[0], accounts[1], 9, 6)
 
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
@@ -117,19 +99,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     // State 2
 
-    sentinel = padBytes32(web3.toHex(1))
-    sequence = padBytes32(web3.toHex(0))
-    addressA = padBytes32(accounts[0])
-    addressB = padBytes32(accounts[1])
-    balanceA = padBytes32(web3.toHex(web3.toWei(11, 'ether')))
-    balanceB = padBytes32(web3.toHex(web3.toWei(4, 'ether')))
-
-    msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    msg = generateState(1, 2, accounts[0], accounts[1], 11, 4)
 
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
@@ -159,19 +129,7 @@ contract('Bi-direction payment channel', function(accounts) {
     // Invalid state challenge case
 
     // ----------- valid state -------------- //
-    sentinel = padBytes32(web3.toHex(0))
-    sequence = padBytes32(web3.toHex(0))
-    addressA = padBytes32(accounts[0])
-    addressB = padBytes32(accounts[1])
-    balanceA = padBytes32(web3.toHex(web3.toWei(10, 'ether')))
-    balanceB = padBytes32(web3.toHex(web3.toWei(5, 'ether')))
-
-    msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    msg = generateState(0, 0, accounts[0], accounts[1], 10, 5)
 
     console.log('State input: ' + msg)
 
@@ -199,19 +157,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('Channel joined, open: ' + open[8][0])
 
     // invalid state
-    sentinel = padBytes32(web3.toHex(0))
-    sequence = padBytes32(web3.toHex(1))
-    addressA = padBytes32(accounts[0])
-    addressB = padBytes32(accounts[1])
-    balanceA = padBytes32(web3.toHex(web3.toWei(100, 'ether')))
-    balanceB = padBytes32(web3.toHex(web3.toWei(5, 'ether')))
-
-    msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    msg = generateState(0, 1, accounts[0], accounts[1], 100, 5)
 
     console.log('State input: ' + msg)
 
@@ -247,19 +193,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('\n')
 
     console.log('Party B starting settleState')
-    sentinel = padBytes32(web3.toHex(0))
-    sequence = padBytes32(web3.toHex(2))
-    addressA = padBytes32(accounts[0])
-    addressB = padBytes32(accounts[1])
-    balanceA = padBytes32(web3.toHex(web3.toWei(9, 'ether')))
-    balanceB = padBytes32(web3.toHex(web3.toWei(6, 'ether')))
-
-    msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    msg = generateState(0, 2, accounts[0], accounts[1], 9, 6)
 
     console.log('State input: ' + msg)
 
@@ -267,9 +201,11 @@ contract('Bi-direction payment channel', function(accounts) {
     // Hashing and signature
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+
     sig2 = await web3.eth.sign(accounts[1], hmsg)
 
-    await cm.startSettleState(channelId, 'run(bytes)', sig2, msg, 2)
+    await cm.startSettleState(channelId, 'run(bytes)', sig1, sig2, msg, 2)
 
     open = await cm.getChannel(channelId)
 
@@ -284,12 +220,7 @@ contract('Bi-direction payment channel', function(accounts) {
     balanceA = padBytes32(web3.toHex(web3.toWei(8, 'ether')))
     balanceB = padBytes32(web3.toHex(web3.toWei(7, 'ether')))
 
-    msg = sentinel +
-        sequence.substr(2, sequence.length) +
-        addressA.substr(2, addressA.length) +
-        addressB.substr(2, addressB.length) +
-        balanceA.substr(2, balanceA.length) + 
-        balanceB.substr(2, balanceB.length)
+    msg = generateState(0, 3, accounts[0], accounts[1], 8, 7)
 
     console.log('State input: ' + msg)
 
@@ -298,8 +229,9 @@ contract('Bi-direction payment channel', function(accounts) {
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
 
-    await cm.challengeSettleState(channelId, msg, sig1, 'run(bytes)', 3)
+    await cm.challengeSettleState(channelId, msg, sig1, sig2, 'run(bytes)', 3)
 
     open = await cm.getChannel(channelId)
 
@@ -328,6 +260,23 @@ contract('Bi-direction payment channel', function(accounts) {
 
 })
 
+function generateState(sentinel, seq, addyA, addyB, balA, balB) {
+    var sentinel = padBytes32(web3.toHex(sentinel))
+    var sequence = padBytes32(web3.toHex(seq))
+    var addressA = padBytes32(addyA)
+    var addressB = padBytes32(addyB)
+    var balanceA = padBytes32(web3.toHex(web3.toWei(balA, 'ether')))
+    var balanceB = padBytes32(web3.toHex(web3.toWei(balB, 'ether')))
+
+    var m = sentinel +
+        sequence.substr(2, sequence.length) +
+        addressA.substr(2, addressA.length) +
+        addressB.substr(2, addressB.length) +
+        balanceA.substr(2, balanceA.length) + 
+        balanceB.substr(2, balanceB.length)
+
+    return m
+}
 
 function padBytes32(data){
   let l = 66-data.length

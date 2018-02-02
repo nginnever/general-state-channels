@@ -15,6 +15,8 @@ contract JudgeBidirectional is JudgeInterface {
     uint public b2;
     address public a1;
 
+    // sequence and close checks in the judge
+
     function run(bytes _data) public {
       uint sequence;
 
