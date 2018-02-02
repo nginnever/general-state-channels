@@ -233,6 +233,7 @@ contract ChannelManager {
 
         channels[_id].booleans[1] = 1;
         channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
+        channels[_id].state = _data;
     }
 
     function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
@@ -246,25 +247,12 @@ contract ChannelManager {
         require(challenged == channels[_id].partyA || challenged == channels[_id].partyB);
         // assert that the state update failed the judge run
 
-        // address addr = address(channels[_id].judge);
-        // bytes4 sig = bytes4(bytes32(sha3(_method)));
-        // assembly {
-        //     let x := mload(0x40)
-        //     mstore(x, sig)
-        //     mstore(add(x,0x04), _data)
-
-        //     let success := call(5000, addr, 0, x, 0x44, x, 0x20)
-        //     let c := mload(x)
-        //     mstore(0x40, add(x,0x44))
-        // }
-
         if (!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
             channels[_id].disputeAddresses[0] = challenged;
             channels[_id].disputeAddresses[1] = msg.sender;
-
         }
     }
 
