@@ -2,17 +2,21 @@ pragma solidity ^0.4.18;
 
 import "./InterpreterInterface.sol";
 
-contract InterpretBidirectional is InterpreterInterface {
+contract InterpretPlasma is InterpreterInterface {
     // State
     // [0-31] isClose flag
     // [32-63] sequence number
-    // [64-95] addressA
-    // [96-127] addressB 
-    // [128-159] balance of party A
-    // [160-191] balance of party B
+    // [] address length
+    // [] addressA
+    // [] addressB 
+    // ...
+    // [] balance of party A
+    // [] balance of party B
+    // ...
 
     uint256 public b1;
     uint256 public b2;
+    uint256[] bals;
 
     function interpret(bytes _data) public returns (bool) {
 
@@ -61,14 +65,7 @@ contract InterpretBidirectional is InterpreterInterface {
     }
 
     function isAddressInState(address _queryAddress, bytes _data) public returns (bool) {
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
-
-        (_b1, _b2, _a, _b) = decodeState(_data);
-        require(_queryAddress == _a || _queryAddress == _b);
-        return true;
+        return true;   
     }
 
     function challenge(address _violator, bytes _state) public {
@@ -79,30 +76,41 @@ contract InterpretBidirectional is InterpreterInterface {
     }
 
     function quickClose(bytes _state) public returns (bool) {
+        decodeState(_state);
 
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
+        // b1 = _b1;
+        // b2 = _b2;
 
-        (_b1, _b2, _a, _b) = decodeState(_state);
-
-        b1 = _b1;
-        b2 = _b2;
-
-        require(_b1 + _b2 == this.balance);
-        _b.send(_b2);
-        _a.send(_b1);
+        // require(_b1 + _b2 == this.balance);
+        // _b.send(_b2);
+        // _a.send(_b1);
         return true;
     }
 
-    function decodeState(bytes state) pure internal returns (uint256 _b1, uint256 _b2, address _a, address _b) {
+    function decodeState(bytes state) internal {
+        uint addressLength;
+        uint _temp;
+
         assembly {
-            _a := mload(add(state, 96))
-            _b := mload(add(state, 128))
-            _b1 := mload(add(state, 160))
-            _b2 := mload(add(state, 192))
+            addressLength := mload(add(state, 96))
+            // _a := mload(add(state, 96))
+            // _b := mload(add(state, 128))
+            // _b1 := mload(add(state, 160))
+            // _b2 := mload(add(state, 192))
         }
+
+        // Need to build a withdrawal structure that does not loop, this limits
+        // the number of balances the plasma chain may hold
+        // move towards a merkle proof of inclusion in a signed plasma block
+        // judge will excersize rules on a fraud proof, state will be to large
+        // to validate on chain
+        for (uint i=96+addressLength; i<96+addressLength+addressLength; i+=32) {
+            assembly {
+                _temp := mload(add(state, i))
+            }
+            bals.push(_temp);
+        }
+
     }
 
 }

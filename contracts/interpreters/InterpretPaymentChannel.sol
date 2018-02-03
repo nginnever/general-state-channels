@@ -53,6 +53,10 @@ contract InterpretPaymentChannel is InterpreterInterface {
         return true;
     }
 
+    function isAddressInState(address _queryAddress, bytes _data) public returns (bool) {
+        return true;
+    }
+
     function challenge(address _violator, bytes _state) public {
         // punish the violator
     }

@@ -9,8 +9,6 @@ contract ChannelManager {
 
     struct Channel
     {
-        address partyA;
-        address partyB;
         uint256 bond;
         uint256 bonded;
         JudgeInterface judge;
@@ -26,10 +24,9 @@ contract ChannelManager {
 
     uint256 public numChannels = 0;
 
-    event ChannelCreated(bytes32 channelId, address indexed partyA, address indexed partyB);
+    event ChannelCreated(bytes32 channelId, address indexed initiator);
 
     function openChannel(
-        address _partyB, 
         uint _bond, 
         uint _settlementPeriod, 
         address _interpreter, 
@@ -51,6 +48,9 @@ contract ChannelManager {
         address s = _getSig(_data, _sig);
         require(s == msg.sender);
 
+        // make sure the sig matches the address in state
+        require(candidateInterpreterContract.isAddressInState(s, _data));
+
         // send bond to the interpreter contract. This contract will read agreed upon state 
         // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
 
@@ -59,12 +59,7 @@ contract ChannelManager {
         // not running judge against initial state since the client counterparty can check the state
         // before agreeing to join the channel
 
-        require(_partyB != 0x0);
-
-
         Channel memory _channel = Channel(
-            msg.sender,
-            _partyB,
             _bond,
             msg.value,
             candidateJudgeContract,
@@ -81,18 +76,23 @@ contract ChannelManager {
         channels[_id] = _channel;
 
 
-        ChannelCreated(_id, msg.sender, _partyB);
+        ChannelCreated(_id, msg.sender);
     }
 
     function joinChannel(bytes32 _id, bytes _data, bytes sig1, bytes sig2) public payable{
-        require(channels[_id].partyB == msg.sender);
+        //require(channels[_id].partyB == msg.sender);
+
+        // require(channels[_id].state == _data);
+
         require(channels[_id].booleans[0] == 0);
         require(msg.value == channels[_id].bond);
 
-        address party1 = _getSig(_data, sig1);
-        address party2 = _getSig(_data, sig2);
+        // check that the state is signed by the initiator and the joining party
+        address _initiator = _getSig(_data, sig1);
+        address _joiningParty = _getSig(_data, sig2);
 
-        require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
+        require(channels[_id].interpreter.isAddressInState(_initiator, _data));
+        require(channels[_id].interpreter.isAddressInState(_joiningParty, _data));
 
         channels[_id].booleans[0] = 1;
         channels[_id].bonded += msg.value;
@@ -102,7 +102,7 @@ contract ChannelManager {
 
     // This updates the state stored in the channel struct
     // check that a valid state is signed by both parties
-    // change this to an optional update function to checkpoint state
+    // this only works for 2 party channels
     function checkpointState(
         bytes32 _id, 
         bytes _data, 
@@ -114,7 +114,8 @@ contract ChannelManager {
         address party1 = _getSig(_data, sig1);
         address party2 = _getSig(_data, sig2);
 
-        require(party1 == channels[_id].partyA && party2 == channels[_id].partyB);
+        require(channels[_id].interpreter.isAddressInState(party1, _data));
+        require(channels[_id].interpreter.isAddressInState(party2, _data));
 
         require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
@@ -127,16 +128,18 @@ contract ChannelManager {
     // change this to an optional update function to checkpoint state
     function closeChannel(
         bytes32 _id, 
-        bytes _data, 
+        bytes _data,
         bytes sig1,
-        bytes sig2) 
-        public 
+        bytes sig2)
+        public
     {
 
-        address challenged = _getSig(_data, sig1);
-        address challenged2 = _getSig(_data, sig2);
+        address _party1 = _getSig(_data, sig1);
+        address _party2 = _getSig(_data, sig2);
 
-        require(challenged == channels[_id].partyA && challenged2 == channels[_id].partyB);
+        require(channels[_id].interpreter.isAddressInState(_party1, _data));
+        require(channels[_id].interpreter.isAddressInState(_party2, _data));
+
         //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
         // signed a close channel agreement on this representation of the state.
 
@@ -177,10 +180,11 @@ contract ChannelManager {
 
         require(channels[_id].settlementPeriodEnd < now);
 
-        address partyA = _getSig(_data, sig1);
-        address partyB = _getSig(_data, sig2);
+        address _party1 = _getSig(_data, sig1);
+        address _party2 = _getSig(_data, sig2);
 
-        require(partyA == channels[_id].partyA && partyB == channels[_id].partyB);
+        require(channels[_id].interpreter.isAddressInState(_party1, _data));
+        require(channels[_id].interpreter.isAddressInState(_party2, _data));
 
         if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
@@ -209,10 +213,11 @@ contract ChannelManager {
         uint dataLength = _data.length;
 
         //require(!channels[_id].interpreter.isClose(_data));
-        address partyA = _getSig(_data, sig1);
-        address partyB = _getSig(_data, sig2);
+        address _party1 = _getSig(_data, sig1);
+        address _party2 = _getSig(_data, sig2);
 
-        require(partyA == channels[_id].partyA && partyB == channels[_id].partyB);
+        require(channels[_id].interpreter.isAddressInState(_party1, _data));
+        require(channels[_id].interpreter.isAddressInState(_party2, _data));
 
         // In order to start settling we run the judge to be sure this is a valid state transition
 
@@ -244,7 +249,7 @@ contract ChannelManager {
 
         address challenged = _getSig(_data, sig);
 
-        require(challenged == channels[_id].partyA || challenged == channels[_id].partyB);
+        require(channels[_id].interpreter.isAddressInState(challenged, _data));
         // assert that the state update failed the judge run
 
         if (!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
@@ -261,8 +266,6 @@ contract ChannelManager {
         view
         returns
     (
-        address partyA,
-        address partyB,
         uint256 bond,
         uint256 bonded,
         address judge,
@@ -277,8 +280,6 @@ contract ChannelManager {
         Channel storage ch = channels[_id];
 
         return (
-            ch.partyA,
-            ch.partyB,
             ch.bond,
             ch.bonded,
             ch.judge,

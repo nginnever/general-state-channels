@@ -43,7 +43,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     var sig1 = await web3.eth.sign(accounts[0], hmsg)
 
-    let res = await cm.openChannel(accounts[1], web3.toWei(5, 'ether'), 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    let res = await cm.openChannel(web3.toWei(5, 'ether'), 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
     let numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
@@ -57,7 +57,7 @@ contract('Bi-direction payment channel', function(accounts) {
     await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
     let open = await cm.getChannel(channelId)
-    console.log('Channel joined, open: ' + open[8][0])
+    console.log('Channel joined, open: ' + open[6][0])
 
     await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
@@ -70,7 +70,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('recovered balanceA: ' + _seq)
     console.log('recovered balanceB: ' + _addr)
     console.log('account[0]: ' + accounts[1])
-    console.log('Judge resolution: ' + open[8][2])
+    console.log('Judge resolution: ' + open[6][2])
 
     console.log('\n')
     console.log('Starting payments...')
@@ -133,7 +133,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
 
-    res = await cm.openChannel(accounts[1], web3.toWei(5, 'ether'), 0, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
     numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
@@ -147,7 +147,7 @@ contract('Bi-direction payment channel', function(accounts) {
     await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
     open = await cm.getChannel(channelId)
-    console.log('Channel joined, open: ' + open[8][0])
+    console.log('Channel joined, open: ' + open[6][0])
 
     // invalid state
     msg = generateState(0, 1, accounts[0], accounts[1], 100, 5)
@@ -181,7 +181,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('recovered balance A: ' + _seq)
     console.log('recovered balance B: ' + _addr)
     console.log('account[0]: ' + accounts[1])
-    console.log('Judge resolution: ' + open[8][2])
+    console.log('Judge resolution: ' + open[6][2])
 
     console.log('\n')
 
@@ -202,7 +202,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     open = await cm.getChannel(channelId)
 
-    console.log('settlement period ends: ' + open[7])
+    console.log('settlement period ends: ' + open[5])
     console.log('current time stamp: ' + Math.round((new Date()).getTime() / 1000) + '\n')
 
     console.log('Party A challenging settle state with higher sequence num')
@@ -222,7 +222,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     open = await cm.getChannel(channelId)
 
-    console.log('\nchallenged new state: ' + open[10])
+    console.log('\nchallenged new state: ' + open[8])
     console.log('\nclosing channel with settle timeout')
 
     console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
@@ -238,7 +238,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('recovered balance B: ' + _addr)
     console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
     console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
-    console.log('Channel status: ' + open[8][0])
+    console.log('Channel status: ' + open[6][0])
     // TODO decide what to do with invalid state sends. Clients should probably just
     // respond saying they wont sign it, please give me a correct one or I'll close 
     // with previous state.
