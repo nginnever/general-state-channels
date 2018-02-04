@@ -9,6 +9,9 @@ const Interpreter = artifacts.require("./InterpretBidirectional.sol")
 let cm
 let jg
 let int
+let sigV = []
+let sigR = []
+let sigS = []
 
 let event_args
 
@@ -42,8 +45,11 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('hashed msg: ' + hmsg)
 
     var sig1 = await web3.eth.sign(accounts[0], hmsg)
+    var r = sig1.substr(0,66)
+    var s = "0x" + sig1.substr(66,64)
+    var v = 27
 
-    let res = await cm.openChannel(web3.toWei(5, 'ether'), 1337, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    let res = await cm.openChannel(web3.toWei(5, 'ether'), 1337, int.address, jg.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
     let numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
@@ -53,13 +59,16 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('{Simulated network send from A to receiver of initial state}')
     
     var sig2 = await web3.eth.sign(accounts[1], hmsg)
+    var r2 = sig2.substr(0,66)
+    var s2 = "0x" + sig2.substr(66,64)
+    var v2 = 28
 
-    await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(5, 'ether')})
+    await cm.joinChannel(channelId, msg, v2, r2, s2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
     let open = await cm.getChannel(channelId)
     console.log('Channel joined, open: ' + open[6][0])
 
-    await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
+    await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
 
     open = await cm.getChannel(channelId)
 
@@ -81,6 +90,9 @@ contract('Bi-direction payment channel', function(accounts) {
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 27
 
     console.log('\nState_1: ' + msg)
 
@@ -89,6 +101,9 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('{Receiver validating state, and signing}\n')
 
     var sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 27
 
     // State 2
 
@@ -97,6 +112,9 @@ contract('Bi-direction payment channel', function(accounts) {
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 27
 
     console.log('\nState_2: ' + msg)
 
@@ -109,11 +127,26 @@ contract('Bi-direction payment channel', function(accounts) {
     // await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
 
     sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 27
 
     console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
     console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
 
-    await cm.closeChannel(channelId, msg, sig1, sig2)
+    sigV = []
+    sigR = []
+    sigS = []
+
+    sigV.push(v)
+    sigV.push(v2)
+    sigR.push(r)
+    sigR.push(r2)
+    sigS.push(s)
+    sigS.push(s2)
+
+
+    await cm.closeChannel(channelId, msg, sigV, sigR, sigS)
 
     console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
     console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
@@ -132,8 +165,11 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('hashed msg: ' + hmsg)
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 27
 
-    res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, jg.address, msg, sig1, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, jg.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
     numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
@@ -143,8 +179,11 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('{Simulated network send from hub to receiver of initial state}')
     
     sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 28
 
-    await cm.joinChannel(channelId, msg, sig1, sig2, {from: accounts[1], value: web3.toWei(5, 'ether')})
+    await cm.joinChannel(channelId, msg, v2, r2, s2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
     open = await cm.getChannel(channelId)
     console.log('Channel joined, open: ' + open[6][0])
@@ -160,6 +199,9 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('hashed msg: ' + hmsg)
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 27
 
     console.log('{Simulated network send from hub to receiver of invalid state}')
     console.log('{requesting a valid state or starting settlement period}\n')
@@ -195,10 +237,27 @@ contract('Bi-direction payment channel', function(accounts) {
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 28
 
     sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 28
 
-    await cm.startSettleState(channelId, 'run(bytes)', sig1, sig2, msg)
+    sigV = []
+    sigR = []
+    sigS = []
+
+    sigV.push(v)
+    sigV.push(v2)
+    sigR.push(r)
+    sigR.push(r2)
+    sigS.push(s)
+    sigS.push(s2)
+
+    await cm.startSettleState(channelId, 'run(bytes)', sigV, sigR, sigS, msg)
 
     open = await cm.getChannel(channelId)
 
@@ -216,9 +275,27 @@ contract('Bi-direction payment channel', function(accounts) {
     hmsg = web3.sha3(msg, {encoding: 'hex'})
 
     sig1 = await web3.eth.sign(accounts[0], hmsg)
-    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 28
 
-    await cm.challengeSettleState(channelId, msg, sig1, sig2, 'run(bytes)')
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 27
+
+    sigV = []
+    sigR = []
+    sigS = []
+
+    sigV.push(v)
+    sigV.push(v2)
+    sigR.push(r)
+    sigR.push(r2)
+    sigS.push(s)
+    sigS.push(s2)
+
+    await cm.challengeSettleState(channelId, msg, sigV, sigR, sigS, 'run(bytes)')
 
     open = await cm.getChannel(channelId)
 

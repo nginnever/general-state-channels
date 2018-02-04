@@ -32,7 +32,9 @@ contract ChannelManager {
         address _interpreter, 
         address _judge, 
         bytes _data,
-        bytes _sig) 
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s) 
         public 
         payable 
     {
@@ -45,7 +47,7 @@ contract ChannelManager {
         require(candidateInterpreterContract.isInterpreter());
 
         // check the account opening a channel signed the initial state
-        address s = _getSig(_data, _sig);
+        address s = _getSig(_data, _v, _r, _s);
         require(s == msg.sender);
 
         // make sure the sig matches the address in state
@@ -79,7 +81,7 @@ contract ChannelManager {
         ChannelCreated(_id, msg.sender);
     }
 
-    function joinChannel(bytes32 _id, bytes _data, bytes sig1, bytes sig2) public payable{
+    function joinChannel(bytes32 _id, bytes _data, uint8 _v, bytes32 _r, bytes32 _s) public payable{
         //require(channels[_id].partyB == msg.sender);
 
         // require(channels[_id].state == _data);
@@ -87,12 +89,14 @@ contract ChannelManager {
         require(channels[_id].booleans[0] == 0);
         require(msg.value == channels[_id].bond);
 
-        // check that the state is signed by the initiator and the joining party
-        address _initiator = _getSig(_data, sig1);
-        address _joiningParty = _getSig(_data, sig2);
+        // check that the state is signed by the sender and sender is in the state
 
-        require(channels[_id].interpreter.isAddressInState(_initiator, _data));
+
+        // address _initiator = _getSig(_data, sig1);
+        address _joiningParty = _getSig(_data, _v, _r, _s);
+        require(msg.sender == _joiningParty);
         require(channels[_id].interpreter.isAddressInState(_joiningParty, _data));
+        // require(channels[_id].interpreter.isAddressInState(_joiningParty, _data));
 
         channels[_id].booleans[0] = 1;
         channels[_id].bonded += msg.value;
@@ -106,16 +110,22 @@ contract ChannelManager {
     function checkpointState(
         bytes32 _id, 
         bytes _data, 
-        bytes sig1,
-        bytes sig2) 
+        uint8[] sigV,
+        bytes32[] sigR,
+        bytes32[] sigS)
         public 
     {
 
-        address party1 = _getSig(_data, sig1);
-        address party2 = _getSig(_data, sig2);
+        for(uint i=0; i<sigV.length; i++) {
+            address participant = _getSig(_data, sigV[i], sigR[i], sigS[i]);
+            require(channels[_id].interpreter.isAddressInState(participant, _data));
+        }
 
-        require(channels[_id].interpreter.isAddressInState(party1, _data));
-        require(channels[_id].interpreter.isAddressInState(party2, _data));
+        // address party1 = _getSig(_data, sig1);
+        // address party2 = _getSig(_data, sig2);
+
+        // require(channels[_id].interpreter.isAddressInState(party1, _data));
+        // require(channels[_id].interpreter.isAddressInState(party2, _data));
 
         require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
@@ -129,16 +139,22 @@ contract ChannelManager {
     function closeChannel(
         bytes32 _id, 
         bytes _data,
-        bytes sig1,
-        bytes sig2)
+        uint8[] _v,
+        bytes32[] _r,
+        bytes32[] _s)
         public
     {
 
-        address _party1 = _getSig(_data, sig1);
-        address _party2 = _getSig(_data, sig2);
+        for(uint i=0; i<_v.length; i++) {
+            address participant = _getSig(_data, _v[i], _r[i], _s[i]);
+            require(channels[_id].interpreter.isAddressInState(participant, _data));
+        }
 
-        require(channels[_id].interpreter.isAddressInState(_party1, _data));
-        require(channels[_id].interpreter.isAddressInState(_party2, _data));
+        // address _party1 = _getSig(_data, sig1);
+        // address _party2 = _getSig(_data, sig2);
+
+        // require(channels[_id].interpreter.isAddressInState(_party1, _data));
+        // require(channels[_id].interpreter.isAddressInState(_party2, _data));
 
         //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
         // signed a close channel agreement on this representation of the state.
@@ -172,7 +188,7 @@ contract ChannelManager {
         channels[_id].booleans[0] = 0;
     }
 
-    function challengeSettleState(bytes32 _id, bytes _data, bytes sig1, bytes sig2, string _method) public {
+    function challengeSettleState(bytes32 _id, bytes _data, uint8[] _v, bytes32[] _r, bytes32[] _s, string _method) public {
         // require the channel to be in a settling state
         require(channels[_id].booleans[1] == 1);
         require(channels[_id].settlementPeriodEnd <= now);
@@ -180,11 +196,10 @@ contract ChannelManager {
 
         require(channels[_id].settlementPeriodEnd < now);
 
-        address _party1 = _getSig(_data, sig1);
-        address _party2 = _getSig(_data, sig2);
-
-        require(channels[_id].interpreter.isAddressInState(_party1, _data));
-        require(channels[_id].interpreter.isAddressInState(_party2, _data));
+        for(uint i=0; i<_v.length; i++) {
+            address participant = _getSig(_data, _v[i], _r[i], _s[i]);
+            require(channels[_id].interpreter.isAddressInState(participant, _data));
+        }
 
         if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
@@ -207,17 +222,15 @@ contract ChannelManager {
         channels[_id].state = _data;
     }
 
-    function startSettleState(bytes32 _id, string _method, bytes sig1, bytes sig2, bytes _data) public {
+    function startSettleState(bytes32 _id, string _method, uint8[] _v, bytes32[] _r, bytes32[] _s, bytes _data) public {
         require(channels[_id].booleans[1] == 0);
 
         uint dataLength = _data.length;
 
-        //require(!channels[_id].interpreter.isClose(_data));
-        address _party1 = _getSig(_data, sig1);
-        address _party2 = _getSig(_data, sig2);
-
-        require(channels[_id].interpreter.isAddressInState(_party1, _data));
-        require(channels[_id].interpreter.isAddressInState(_party2, _data));
+        for(uint i=0; i<_v.length; i++) {
+            address participant = _getSig(_data, _v[i], _r[i], _s[i]);
+            require(channels[_id].interpreter.isAddressInState(participant, _data));
+        }
 
         // In order to start settling we run the judge to be sure this is a valid state transition
 
@@ -241,14 +254,13 @@ contract ChannelManager {
         channels[_id].state = _data;
     }
 
-    function exerciseJudge(bytes32 _id, string _method, bytes sig, bytes _data) public returns(bool success){
+    function exerciseJudge(bytes32 _id, string _method, uint8 _v, bytes32 _r, bytes32 _s, bytes _data) public returns(bool success){
         uint dataLength = _data.length;
 
         // uint256 _bonded = channels[_id].bonded;
         // channels[_id].bonded = 0;
 
-        address challenged = _getSig(_data, sig);
-
+        address challenged = _getSig(_data, _v, _r, _s);
         require(channels[_id].interpreter.isAddressInState(challenged, _data));
         // assert that the state update failed the judge run
 
@@ -292,13 +304,15 @@ contract ChannelManager {
         );
     }
 
-    function _getSig(bytes _d, bytes _s) internal returns(address) {
+    function _getSig(bytes _d, uint8 _v, bytes32 _r, bytes32 _s) internal returns(address) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 h = keccak256(_d);
 
         bytes32 prefixedHash = keccak256(prefix, h);
 
-        address a = ECRecovery.recover(prefixedHash, _s);
+        address a = ecrecover(prefixedHash, _v, _r, _s);
+
+        //address a = ECRecovery.recover(prefixedHash, _s);
 
         return(a);
     }
