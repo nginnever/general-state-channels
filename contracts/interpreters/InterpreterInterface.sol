@@ -19,6 +19,8 @@ contract InterpreterInterface {
 
     function isAddressInState(address _queryAddress, bytes _data) public returns (bool);
 
+    function hasAllSigs(address[] recoveredAddresses, bytes _data) public returns (bool);
+
     function challenge(address _violator, bytes _state) public;
 
     function quickClose(bytes _data) public returns (bool);

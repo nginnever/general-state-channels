@@ -145,16 +145,15 @@ contract ChannelManager {
         public
     {
 
+        address[] tempSigs;
+
         for(uint i=0; i<_v.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            require(channels[_id].interpreter.isAddressInState(participant, _data));
+            tempSigs.push(participant);
         }
 
-        // address _party1 = _getSig(_data, sig1);
-        // address _party2 = _getSig(_data, sig2);
-
-        // require(channels[_id].interpreter.isAddressInState(_party1, _data));
-        // require(channels[_id].interpreter.isAddressInState(_party2, _data));
+        // make sure all parties have signed
+        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
 
         //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
         // signed a close channel agreement on this representation of the state.
@@ -196,10 +195,15 @@ contract ChannelManager {
 
         require(channels[_id].settlementPeriodEnd < now);
 
+        address[] tempSigs;
+
         for(uint i=0; i<_v.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            require(channels[_id].interpreter.isAddressInState(participant, _data));
+            tempSigs.push(participant);
         }
+
+        // make sure all parties have signed
+        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
 
         if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
@@ -227,10 +231,15 @@ contract ChannelManager {
 
         uint dataLength = _data.length;
 
+        address[] tempSigs;
+
         for(uint i=0; i<_v.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            require(channels[_id].interpreter.isAddressInState(participant, _data));
+            tempSigs.push(participant);
         }
+
+        // make sure all parties have signed
+        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));  
 
         // In order to start settling we run the judge to be sure this is a valid state transition
 

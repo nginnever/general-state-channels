@@ -71,6 +71,21 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
+    function hasAllSigs(address[] _recovered, bytes _data) public returns (bool) {
+        uint256 _b1;
+        uint256 _b2;
+        address _a;
+        address _b;
+
+        (_b1, _b2, _a, _b) = decodeState(_data);
+
+        for(uint i=0; i<_recovered.length; i++) {
+            require(_recovered[i] == _a || _recovered[i] == _b);
+        }
+        
+        return true;
+    }
+
     function challenge(address _violator, bytes _state) public {
         // we do not close with a challenge for bi-directional. We assume
         // that the client will close with a settlement period on last good state
