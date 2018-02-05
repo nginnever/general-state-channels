@@ -77,6 +77,7 @@ contract ChannelManager {
         ChannelCreated(_id, msg.sender);
     }
 
+    // no protection for double joining, this should be reverted in the interpreter
     function joinChannel(bytes32 _id, bytes _data, uint8 _v, bytes32 _r, bytes32 _s) public payable{
         //require(channels[_id].partyB == msg.sender);
 
@@ -115,11 +116,11 @@ contract ChannelManager {
         public 
     {
 
-        address[] tempSigs;
+        address[] memory tempSigs = new address[](0x0);
 
         for(uint i=0; i<sigV.length; i++) {
             address participant = _getSig(_data, sigV[i], sigR[i], sigS[i]);
-            tempSigs.push(participant);
+            tempSigs[i] = participant;
         }
 
         // make sure all parties have signed
@@ -143,13 +144,13 @@ contract ChannelManager {
         public
     {
 
-        address[] tempSigs;
+        address[] memory tempSigs = new address[](_v.length);
 
         _length = tempSigs.length;
 
         for(uint i=0; i<_r.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            tempSigs.push(participant);
+            tempSigs[i] = participant;
         }
 
         _tempSigs = tempSigs;
@@ -196,13 +197,11 @@ contract ChannelManager {
         require(channels[_id].settlementPeriodEnd <= now);
         uint dataLength = _data.length;
 
-        require(channels[_id].settlementPeriodEnd < now);
-
-        address[] tempSigs;
+        address[] memory tempSigs = new address[](_v.length);
 
         for(uint i=0; i<_v.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            tempSigs.push(participant);
+            tempSigs[i] = participant;
         }
 
         // make sure all parties have signed
@@ -234,11 +233,11 @@ contract ChannelManager {
 
         uint dataLength = _data.length;
 
-        address[] tempSigs;
+        address[] memory tempSigs = new address[](_v.length);
 
         for(uint i=0; i<_v.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            tempSigs.push(participant);
+            tempSigs[i] = participant;
         }
 
         // make sure all parties have signed
@@ -258,8 +257,8 @@ contract ChannelManager {
             // channels[_id].disputeAddresses[1] = msg.sender;
         }
 
-        //require(channels[_id].booleans[2] == 1);
-        //require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
+        require(channels[_id].booleans[2] == 1);
+        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
         channels[_id].booleans[1] = 1;
         channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
@@ -274,7 +273,6 @@ contract ChannelManager {
 
         address challenged = _getSig(_data, _v, _r, _s);
         require(channels[_id].interpreter.isAddressInState(challenged));
-        // assert that the state update failed the judge run
 
         if (!channels[_id].interpreter.call(bytes4(bytes32(keccak256(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = false;

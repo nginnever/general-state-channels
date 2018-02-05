@@ -16,7 +16,7 @@ contract InterpretBidirectional is InterpreterInterface {
     uint256 public bond;
     address public a;
     address public b;
-    bool public allJoin;
+    bool public allJoin = false;
 
     function interpret(bytes _data) public returns (bool) {
 
@@ -97,8 +97,7 @@ contract InterpretBidirectional is InterpreterInterface {
         //a = _a;
         //b = _b;
 
-        //hack indexes for bug here with the 0 element of the array being populated with 000.. (maybe size of arr)
-        for(uint i=1; i<3; i++) {
+        for(uint i=0; i<_recovered.length; i++) {
             if(_recovered[i] == a) {
                 require(_recovered[i+1] == b);
             } else {

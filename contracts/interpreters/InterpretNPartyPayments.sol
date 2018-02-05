@@ -18,11 +18,19 @@ contract InterpretPlasma is InterpreterInterface {
     uint256 public b2;
     uint256[] bals;
     bool allJoin = false;
+    uint256 public numJoined = 0;
+    uint256 public numParties = 0;
 
     mapping(address => uint256) balances;
+    mapping(address => address) joinedParties;
 
     function interpret(bytes _data) public returns (bool) {
 
+        return true;
+    }
+
+    function initState(bytes _data) public returns (bool) {
+        _decodeState(_data);
         return true;
     }
 
@@ -67,9 +75,13 @@ contract InterpretPlasma is InterpreterInterface {
         return true;
     }
 
-    function isAddressInState(address _queryAddress, bytes _data) public returns (bool) {
+    function isAddressInState(address _queryAddress) public returns (bool) {
         
-        _decodeState(_data);
+        require(joinedParties[_queryAddress] != 0x0);
+        if(joinedParties[_queryAddress] == 0x0) {
+            joinedParties[_queryAddress] = _queryAddress;
+            numJoined++;
+        }
         //require(_queryAddress == _a || _queryAddress == _b);
         return true;
     }
@@ -100,6 +112,10 @@ contract InterpretPlasma is InterpreterInterface {
     }
 
     function allJoined() public returns (bool) {
+        if(numJoined == numParties){
+            allJoin = true;
+        }
+
         return allJoin;
     }
 
@@ -131,7 +147,6 @@ contract InterpretPlasma is InterpreterInterface {
 
     function run(bytes _data) public {
         uint sequence;
-        uint _bond;
 
         assembly {
             sequence := mload(add(_data, 64))
@@ -141,11 +156,13 @@ contract InterpretPlasma is InterpreterInterface {
 
     }
 
-    function _decodeState(bytes state) pure internal {
+    function _decodeState(bytes state) internal {
         uint numParty;
         assembly {
             numParty := mload(add(state, 96))
         }
+
+        numParties = numParty;
 
         for(uint i=0; i<numParty; i++){
             uint pos = 0;
@@ -160,6 +177,8 @@ contract InterpretPlasma is InterpreterInterface {
                 temp := mload(add(state, pos))
                 tempA :=mload(add(state, posA))
             }
+
+            balances[tempA] = temp;
         }
     }
 
