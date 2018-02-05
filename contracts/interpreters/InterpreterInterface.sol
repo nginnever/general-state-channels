@@ -17,13 +17,19 @@ contract InterpreterInterface {
 
     function isSequenceEqual(bytes _data, uint _seq) public returns (bool);
 
-    function isAddressInState(address _queryAddress, bytes _data) public returns (bool);
+    function isAddressInState(address _queryAddress) public returns (bool);
 
     function hasAllSigs(address[] recoveredAddresses, bytes _data) public returns (bool);
 
     function challenge(address _violator, bytes _state) public;
 
     function quickClose(bytes _data) public returns (bool);
+
+    function allJoined() public returns (bool);
+
+    function initState(bytes _date) public returns (bool);
+
+    function run(bytes _data) public;
 
     function () payable {
 

@@ -1,17 +1,17 @@
 pragma solidity ^0.4.18;
 
-import "./judges/JudgeInterface.sol";
 import "./interpreters/InterpreterInterface.sol";
 import "./lib/ECRecovery.sol";
 
 contract ChannelManager {
-    bool public judgeRes;
+    bool public judgeRes = true;
+    address[] public _tempSigs;
+    uint public _length;
 
     struct Channel
     {
         uint256 bond;
         uint256 bonded;
-        JudgeInterface judge;
         InterpreterInterface interpreter;
         uint256 settlementPeriodLength;
         uint256 settlementPeriodEnd;
@@ -29,8 +29,7 @@ contract ChannelManager {
     function openChannel(
         uint _bond, 
         uint _settlementPeriod, 
-        address _interpreter, 
-        address _judge, 
+        address _interpreter,
         bytes _data,
         uint8 _v,
         bytes32 _r,
@@ -38,12 +37,9 @@ contract ChannelManager {
         public 
         payable 
     {
-
-        JudgeInterface candidateJudgeContract = JudgeInterface(_judge);
         InterpreterInterface candidateInterpreterContract = InterpreterInterface(_interpreter);
 
         // NOTE: verify that a contract is what we expect - https://github.com/Lunyr/crowdsale-contracts/blob/cfadd15986c30521d8ba7d5b6f57b4fefcc7ac38/contracts/LunyrToken.sol#L117
-        require(candidateJudgeContract.isJudge());
         require(candidateInterpreterContract.isInterpreter());
 
         // check the account opening a channel signed the initial state
@@ -51,7 +47,8 @@ contract ChannelManager {
         require(s == msg.sender);
 
         // make sure the sig matches the address in state
-        require(candidateInterpreterContract.isAddressInState(s, _data));
+        require(candidateInterpreterContract.initState(_data));
+        require(candidateInterpreterContract.isAddressInState(s));
 
         // send bond to the interpreter contract. This contract will read agreed upon state 
         // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
@@ -64,7 +61,6 @@ contract ChannelManager {
         Channel memory _channel = Channel(
             _bond,
             msg.value,
-            candidateJudgeContract,
             candidateInterpreterContract,
             _settlementPeriod,
             0,
@@ -95,10 +91,13 @@ contract ChannelManager {
         // address _initiator = _getSig(_data, sig1);
         address _joiningParty = _getSig(_data, _v, _r, _s);
         require(msg.sender == _joiningParty);
-        require(channels[_id].interpreter.isAddressInState(_joiningParty, _data));
+        require(channels[_id].interpreter.isAddressInState(_joiningParty));
         // require(channels[_id].interpreter.isAddressInState(_joiningParty, _data));
 
-        channels[_id].booleans[0] = 1;
+        if(channels[_id].interpreter.allJoined()) {
+            channels[_id].booleans[0] = 1;
+        }
+
         channels[_id].bonded += msg.value;
 
         channels[_id].interpreter.send(msg.value);
@@ -116,16 +115,15 @@ contract ChannelManager {
         public 
     {
 
+        address[] tempSigs;
+
         for(uint i=0; i<sigV.length; i++) {
             address participant = _getSig(_data, sigV[i], sigR[i], sigS[i]);
-            require(channels[_id].interpreter.isAddressInState(participant, _data));
+            tempSigs.push(participant);
         }
 
-        // address party1 = _getSig(_data, sig1);
-        // address party2 = _getSig(_data, sig2);
-
-        // require(channels[_id].interpreter.isAddressInState(party1, _data));
-        // require(channels[_id].interpreter.isAddressInState(party2, _data));
+        // make sure all parties have signed
+        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
 
         require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
@@ -147,10 +145,15 @@ contract ChannelManager {
 
         address[] tempSigs;
 
-        for(uint i=0; i<_v.length; i++) {
+        _length = tempSigs.length;
+
+        for(uint i=0; i<_r.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
             tempSigs.push(participant);
         }
+
+        _tempSigs = tempSigs;
+        //_length = _tempSigs.length;
 
         // make sure all parties have signed
         require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
@@ -205,7 +208,7 @@ contract ChannelManager {
         // make sure all parties have signed
         require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
 
-        if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
+        if (channels[_id].interpreter.call(bytes4(bytes32(keccak256(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
             channels[_id].booleans[2] = 1;
 
@@ -243,7 +246,7 @@ contract ChannelManager {
 
         // In order to start settling we run the judge to be sure this is a valid state transition
 
-        if (channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
+        if (channels[_id].interpreter.call(bytes4(bytes32(keccak256(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
             channels[_id].booleans[2] = 1;
 
@@ -255,8 +258,8 @@ contract ChannelManager {
             // channels[_id].disputeAddresses[1] = msg.sender;
         }
 
-        require(channels[_id].booleans[2] == 1);
-        require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
+        //require(channels[_id].booleans[2] == 1);
+        //require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
         channels[_id].booleans[1] = 1;
         channels[_id].settlementPeriodEnd = now + channels[_id].settlementPeriodLength;
@@ -270,10 +273,10 @@ contract ChannelManager {
         // channels[_id].bonded = 0;
 
         address challenged = _getSig(_data, _v, _r, _s);
-        require(channels[_id].interpreter.isAddressInState(challenged, _data));
+        require(channels[_id].interpreter.isAddressInState(challenged));
         // assert that the state update failed the judge run
 
-        if (!channels[_id].judge.call(bytes4(bytes32(sha3(_method))), bytes32(32), bytes32(dataLength), _data)) {
+        if (!channels[_id].interpreter.call(bytes4(bytes32(keccak256(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
@@ -289,7 +292,6 @@ contract ChannelManager {
     (
         uint256 bond,
         uint256 bonded,
-        address judge,
         address interpreter,
         uint256 settlementPeriodLength,
         uint256 settlementPeriodEnd,
@@ -303,7 +305,6 @@ contract ChannelManager {
         return (
             ch.bond,
             ch.bonded,
-            ch.judge,
             ch.interpreter,
             ch.settlementPeriodLength,
             ch.settlementPeriodEnd,
@@ -313,7 +314,7 @@ contract ChannelManager {
         );
     }
 
-    function _getSig(bytes _d, uint8 _v, bytes32 _r, bytes32 _s) internal returns(address) {
+    function _getSig(bytes _d, uint8 _v, bytes32 _r, bytes32 _s) internal pure returns(address) {
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 h = keccak256(_d);
 

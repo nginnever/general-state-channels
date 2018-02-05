@@ -3,11 +3,9 @@
 const utils = require('./helpers/utils')
 
 const ChannelManager = artifacts.require("./ChannelManager.sol")
-const Judge = artifacts.require("./JudgeBidirectional.sol")
 const Interpreter = artifacts.require("./InterpretBidirectional.sol")
 
 let cm
-let jg
 let int
 let sigV = []
 let sigR = []
@@ -18,7 +16,6 @@ let event_args
 contract('Bi-direction payment channel', function(accounts) {
   it("Payment Channel", async function() {
     cm = await ChannelManager.new()
-    jg = await Judge.new()
     int = await Interpreter.new()
 
 
@@ -49,7 +46,7 @@ contract('Bi-direction payment channel', function(accounts) {
     var s = "0x" + sig1.substr(66,64)
     var v = 27
 
-    let res = await cm.openChannel(web3.toWei(5, 'ether'), 1337, int.address, jg.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    let res = await cm.openChannel(web3.toWei(5, 'ether'), 1337, int.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
     let numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
@@ -66,7 +63,7 @@ contract('Bi-direction payment channel', function(accounts) {
     await cm.joinChannel(channelId, msg, v2, r2, s2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
     let open = await cm.getChannel(channelId)
-    console.log('Channel joined, open: ' + open[6][0])
+    console.log('Channel joined, open: ' + open[5][0])
 
     await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
 
@@ -74,12 +71,13 @@ contract('Bi-direction payment channel', function(accounts) {
 
 
 
-    let _seq = await jg.b1()
-    let _addr = await jg.b2()
+    let _seq = await int.b1()
+    let _addr = await int.b2()
+    let _bond = await int.bond()
     console.log('recovered balanceA: ' + _seq)
     console.log('recovered balanceB: ' + _addr)
-    console.log('account[0]: ' + accounts[1])
-    console.log('Judge resolution: ' + open[6][2])
+    console.log('amount eth on Interpreter: ' + _bond)
+    console.log('Judge resolution: ' + open[5][2])
 
     console.log('\n')
     console.log('Starting payments...')
@@ -145,11 +143,27 @@ contract('Bi-direction payment channel', function(accounts) {
     sigS.push(s)
     sigS.push(s2)
 
+    console.log(sigV)
+    console.log(sigR)
+
 
     await cm.closeChannel(channelId, msg, sigV, sigR, sigS)
 
     console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
     console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
+
+    let _addrA = await int.a()
+    let _addrB = await int.b()
+    let _tempSigs1 = await cm._tempSigs(0)
+    let _tempSigs2 = await cm._tempSigs(1)
+    //let _length = await cm._length()
+    //console.log('recovered length: ' + _length)
+    console.log('recovered sig addresses: ' + _tempSigs1)
+    console.log('recovered sig addresses: ' + _tempSigs2)
+    console.log('recovered addressA: ' + _addrA)
+    console.log('recovered addressB: ' + _addrB)
+    console.log('account[0]: ' + accounts[0])
+    console.log('account[1]: ' + accounts[1])
 
 
     // Invalid state challenge case
@@ -169,7 +183,7 @@ contract('Bi-direction payment channel', function(accounts) {
     s = "0x" + sig1.substr(66,64)
     v = 27
 
-    res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, jg.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
     numChan = await cm.numChannels()
 
     event_args = res.logs[0].args
@@ -186,7 +200,7 @@ contract('Bi-direction payment channel', function(accounts) {
     await cm.joinChannel(channelId, msg, v2, r2, s2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
     open = await cm.getChannel(channelId)
-    console.log('Channel joined, open: ' + open[6][0])
+    console.log('Channel joined, open: ' + open[5][0])
 
     // invalid state
     msg = generateState(0, 1, accounts[0], accounts[1], 100, 5)
@@ -218,12 +232,12 @@ contract('Bi-direction payment channel', function(accounts) {
 
 
 
-    _seq = await jg.b1()
-    _addr = await jg.b2()
+    _seq = await int.b1()
+    _addr = await int.b2()
     console.log('recovered balance A: ' + _seq)
     console.log('recovered balance B: ' + _addr)
     console.log('account[0]: ' + accounts[1])
-    console.log('Judge resolution: ' + open[6][2])
+    console.log('Judge resolution: ' + open[5][2])
 
     console.log('\n')
 
@@ -261,7 +275,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     open = await cm.getChannel(channelId)
 
-    console.log('settlement period ends: ' + open[5])
+    console.log('settlement period ends: ' + open[4])
     console.log('current time stamp: ' + Math.round((new Date()).getTime() / 1000) + '\n')
 
     console.log('Party A challenging settle state with higher sequence num')
@@ -299,7 +313,7 @@ contract('Bi-direction payment channel', function(accounts) {
 
     open = await cm.getChannel(channelId)
 
-    console.log('\nchallenged new state: ' + open[8])
+    console.log('\nchallenged new state: ' + open[7])
     console.log('\nclosing channel with settle timeout')
 
     console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
@@ -315,7 +329,7 @@ contract('Bi-direction payment channel', function(accounts) {
     console.log('recovered balance B: ' + _addr)
     console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
     console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
-    console.log('Channel status: ' + open[6][0])
+    console.log('Channel status: ' + open[5][0])
     // TODO decide what to do with invalid state sends. Clients should probably just
     // respond saying they wont sign it, please give me a correct one or I'll close 
     // with previous state.

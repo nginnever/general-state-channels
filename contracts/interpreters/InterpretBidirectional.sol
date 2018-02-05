@@ -13,10 +13,28 @@ contract InterpretBidirectional is InterpreterInterface {
 
     uint256 public b1;
     uint256 public b2;
+    uint256 public bond;
+    address public a;
+    address public b;
+    bool public allJoin;
 
     function interpret(bytes _data) public returns (bool) {
 
       return true;
+    }
+
+    function initState(bytes _data) public returns (bool) {
+        uint256 _b1;
+        uint256 _b2;
+        address _a;
+        address _b;
+
+        (_b1, _b2, _a, _b) = decodeState(_data);
+        a = _a;
+        b = _b;
+        b1 = _b1;
+        b2 = _b2;
+        return true;
     }
 
     function isClose(bytes _data) public returns(bool) {
@@ -60,29 +78,35 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
-    function isAddressInState(address _queryAddress, bytes _data) public returns (bool) {
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
-
-        (_b1, _b2, _a, _b) = decodeState(_data);
-        require(_queryAddress == _a || _queryAddress == _b);
+    function isAddressInState(address _queryAddress) public returns (bool) {
+        require(_queryAddress == a || _queryAddress == b);
+        if(a != 0x0 && b != 0x0) {
+            allJoin = true;
+        }
         return true;
     }
 
     function hasAllSigs(address[] _recovered, bytes _data) public returns (bool) {
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
+        //uint256 _b1;
+        //uint256 _b2;
+        //address _a;
+        //address _b;
 
-        (_b1, _b2, _a, _b) = decodeState(_data);
+        //(_b1, _b2, _a, _b) = decodeState(_data);
 
-        for(uint i=0; i<_recovered.length; i++) {
-            require(_recovered[i] == _a || _recovered[i] == _b);
+        //a = _a;
+        //b = _b;
+
+        //hack indexes for bug here with the 0 element of the array being populated with 000.. (maybe size of arr)
+        for(uint i=1; i<3; i++) {
+            if(_recovered[i] == a) {
+                require(_recovered[i+1] == b);
+            } else {
+                require(_recovered[i-1] == a);
+            }
+            //require(_recovered[i] == _a || _recovered[i] == _b);
         }
-        
+
         return true;
     }
 
@@ -109,6 +133,34 @@ contract InterpretBidirectional is InterpreterInterface {
         _b.send(_b2);
         _a.send(_b1);
         return true;
+    }
+
+
+    function run(bytes _data) public {
+        uint sequence;
+        uint _bond;
+
+        assembly {
+            sequence := mload(add(_data, 64))
+        }
+
+        uint256 _b1;
+        uint256 _b2;
+        address _a;
+        address _b;
+
+        (_b1, _b2, _a, _b) = decodeState(_data);
+
+        b1 = _b1;
+        b2 = _b2;
+        bond = _b1 + _b2;
+        _bond = _b1 + _b2;
+
+        require(_bond == this.balance);
+    }
+
+    function allJoined() public returns (bool) {
+        return allJoin;
     }
 
     function decodeState(bytes state) pure internal returns (uint256 _b1, uint256 _b2, address _a, address _b) {
