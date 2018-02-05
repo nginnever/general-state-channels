@@ -116,7 +116,7 @@ contract ChannelManager {
         public 
     {
 
-        address[] memory tempSigs = new address[](0x0);
+        address[] memory tempSigs = new address[](sigV.length);
 
         for(uint i=0; i<sigV.length; i++) {
             address participant = _getSig(_data, sigV[i], sigR[i], sigS[i]);
