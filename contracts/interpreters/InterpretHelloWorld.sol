@@ -35,13 +35,13 @@ contract InterpretHelloWorld is InterpreterInterface {
     }
 
     function isClose(bytes _data) public returns(bool) {
-        uint isClose;
+        uint isClosed;
 
         assembly {
-            isClose := mload(add(_data, 32))
+            isClosed := mload(add(_data, 32))
         }
 
-        require(isClose == 1);
+        require(isClosed == 1);
         return true;
     }
 
@@ -73,7 +73,7 @@ contract InterpretHelloWorld is InterpreterInterface {
         return true;
     }
 
-    function isAddressInState(address _queryAddress, bytes _data) public returns (bool) {
+    function isAddressInState(address _queryAddress) public returns (bool) {
         return true;
         
     }

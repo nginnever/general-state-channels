@@ -53,7 +53,7 @@ contract ChannelManager {
         // send bond to the interpreter contract. This contract will read agreed upon state 
         // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
 
-        candidateInterpreterContract.send(msg.value);
+        candidateInterpreterContract.transfer(msg.value);
 
         // not running judge against initial state since the client counterparty can check the state
         // before agreeing to join the channel
@@ -84,16 +84,14 @@ contract ChannelManager {
         // require(channels[_id].state == _data);
 
         require(channels[_id].booleans[0] == 0);
-        require(msg.value == channels[_id].bond);
+        // replace bond with balance?
+        //require(msg.value == channels[_id].bond);
 
         // check that the state is signed by the sender and sender is in the state
 
-
-        // address _initiator = _getSig(_data, sig1);
         address _joiningParty = _getSig(_data, _v, _r, _s);
         require(msg.sender == _joiningParty);
         require(channels[_id].interpreter.isAddressInState(_joiningParty));
-        // require(channels[_id].interpreter.isAddressInState(_joiningParty, _data));
 
         if(channels[_id].interpreter.allJoined()) {
             channels[_id].booleans[0] = 1;
@@ -101,7 +99,7 @@ contract ChannelManager {
 
         channels[_id].bonded += msg.value;
 
-        channels[_id].interpreter.send(msg.value);
+        channels[_id].interpreter.transfer(msg.value);
     }
 
     // This updates the state stored in the channel struct
@@ -124,7 +122,7 @@ contract ChannelManager {
         }
 
         // make sure all parties have signed
-        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
+        require(channels[_id].interpreter.hasAllSigs(tempSigs));
 
         require(channels[_id].interpreter.isSequenceHigher(_data, channels[_id].state));
 
@@ -157,7 +155,7 @@ contract ChannelManager {
         //_length = _tempSigs.length;
 
         // make sure all parties have signed
-        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
+        require(channels[_id].interpreter.hasAllSigs(tempSigs));
 
         //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
         // signed a close channel agreement on this representation of the state.
@@ -205,7 +203,7 @@ contract ChannelManager {
         }
 
         // make sure all parties have signed
-        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));
+        require(channels[_id].interpreter.hasAllSigs(tempSigs));
 
         if (channels[_id].interpreter.call(bytes4(bytes32(keccak256(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
@@ -215,8 +213,6 @@ contract ChannelManager {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
-            // channels[_id].disputeAddresses[0] = initiator;
-            // channels[_id].disputeAddresses[1] = msg.sender;
         }
 
         require(channels[_id].booleans[2] == 1);
@@ -241,7 +237,7 @@ contract ChannelManager {
         }
 
         // make sure all parties have signed
-        require(channels[_id].interpreter.hasAllSigs(tempSigs, _data));  
+        require(channels[_id].interpreter.hasAllSigs(tempSigs));  
 
         // In order to start settling we run the judge to be sure this is a valid state transition
 
@@ -253,8 +249,6 @@ contract ChannelManager {
             judgeRes = false;
             channels[_id].booleans[2] = 0;
             channels[_id].state = _data;
-            // channels[_id].disputeAddresses[0] = initiator;
-            // channels[_id].disputeAddresses[1] = msg.sender;
         }
 
         require(channels[_id].booleans[2] == 1);
@@ -265,7 +259,7 @@ contract ChannelManager {
         channels[_id].state = _data;
     }
 
-    function exerciseJudge(bytes32 _id, string _method, uint8 _v, bytes32 _r, bytes32 _s, bytes _data) public returns(bool success){
+    function exerciseJudge(bytes32 _id, string _method, uint8 _v, bytes32 _r, bytes32 _s, bytes _data) public {
         uint dataLength = _data.length;
 
         // uint256 _bonded = channels[_id].bonded;

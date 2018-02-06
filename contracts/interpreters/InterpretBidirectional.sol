@@ -38,13 +38,13 @@ contract InterpretBidirectional is InterpreterInterface {
     }
 
     function isClose(bytes _data) public returns(bool) {
-        uint isClose;
+        uint isClosed;
 
         assembly {
-            isClose := mload(add(_data, 32))
+            isClosed := mload(add(_data, 32))
         }
 
-        require(isClose == 1);
+        require(isClosed == 1);
         return true;
     }
 
@@ -86,7 +86,7 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
-    function hasAllSigs(address[] _recovered, bytes _data) public returns (bool) {
+    function hasAllSigs(address[] _recovered) public returns (bool) {
         //uint256 _b1;
         //uint256 _b2;
         //address _a;
@@ -129,8 +129,8 @@ contract InterpretBidirectional is InterpreterInterface {
         b2 = _b2;
 
         require(_b1 + _b2 == this.balance);
-        _b.send(_b2);
-        _a.send(_b1);
+        _b.transfer(_b2);
+        _a.transfer(_b1);
         return true;
     }
 

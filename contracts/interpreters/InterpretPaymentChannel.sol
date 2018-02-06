@@ -53,7 +53,7 @@ contract InterpretPaymentChannel is InterpreterInterface {
         return true;
     }
 
-    function isAddressInState(address _queryAddress, bytes _data) public returns (bool) {
+    function isAddressInState(address _queryAddress) public returns (bool) {
         return true;
     }
 
@@ -84,8 +84,8 @@ contract InterpretPaymentChannel is InterpreterInterface {
         require(_b1<=_bond && _b1>=0);
 
         require(_bond == this.balance);
-        _b.send(_b1);
-        _a.send(_bond-_b1);
+        _b.transfer(_b1);
+        _a.transfer(_bond-_b1);
         return true;
     }
 
