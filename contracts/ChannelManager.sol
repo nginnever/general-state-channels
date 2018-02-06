@@ -1,7 +1,7 @@
 pragma solidity ^0.4.18;
 
 import "./interpreters/InterpreterInterface.sol";
-import "./lib/ECRecovery.sol";
+// import "./lib/ECRecovery.sol";
 
 contract ChannelManager {
     bool public judgeRes = true;
@@ -16,7 +16,7 @@ contract ChannelManager {
         uint256 settlementPeriodLength;
         uint256 settlementPeriodEnd;
         uint8[3] booleans; // ['isChannelOpen', 'settlingPeriodStarted', 'judgeResolution']
-        address[2] disputeAddresses;
+        address[2] disputeAddresses; // ['challengedParty', 'fraudSubmitter']
         bytes state;
     }
 
@@ -52,12 +52,10 @@ contract ChannelManager {
 
         // send bond to the interpreter contract. This contract will read agreed upon state 
         // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
-
         candidateInterpreterContract.transfer(msg.value);
 
         // not running judge against initial state since the client counterparty can check the state
         // before agreeing to join the channel
-
         Channel memory _channel = Channel(
             _bond,
             msg.value,
@@ -79,16 +77,13 @@ contract ChannelManager {
 
     // no protection for double joining, this should be reverted in the interpreter
     function joinChannel(bytes32 _id, bytes _data, uint8 _v, bytes32 _r, bytes32 _s) public payable{
-        //require(channels[_id].partyB == msg.sender);
-
         // require(channels[_id].state == _data);
-
+        // require the channel is not open yet
         require(channels[_id].booleans[0] == 0);
         // replace bond with balance?
         //require(msg.value == channels[_id].bond);
 
         // check that the state is signed by the sender and sender is in the state
-
         address _joiningParty = _getSig(_data, _v, _r, _s);
         require(msg.sender == _joiningParty);
         require(channels[_id].interpreter.isAddressInState(_joiningParty));

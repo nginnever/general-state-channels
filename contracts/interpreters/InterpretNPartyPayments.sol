@@ -83,12 +83,11 @@ contract InterpretNPartyPayments is InterpreterInterface {
 
     function isAddressInState(address _queryAddress) public returns (bool) {
         require(inState[_queryAddress] != false);
+        require(joinedParties[_queryAddress] == 0x0);
 
-        if(joinedParties[_queryAddress] == 0x0) {
-            joinedParties[_queryAddress] = _queryAddress;
-            partyArr.push(_queryAddress);
-            numJoined++;
-        }
+        joinedParties[_queryAddress] = _queryAddress;
+        partyArr.push(_queryAddress);
+        numJoined++;
         //require(_queryAddress == _a || _queryAddress == _b);
         return true;
     }
@@ -172,6 +171,7 @@ contract InterpretNPartyPayments is InterpreterInterface {
             balances[tempA] = temp;
             inState[tempA] = true;
 
+            // for testing only
             if(i==0) {
                 a = tempA;
                 b1 = temp;

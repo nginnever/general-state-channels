@@ -95,21 +95,7 @@ contract('N Party payment channel', function(accounts) {
     open = await cm.getChannel(channelId)
     console.log('Channel joined, open: ' + open[5][0])
 
-    await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
-
-    open = await cm.getChannel(channelId)
-
-
-
-    // let _seq = await int.b1()
-    // let _addr = await int.b2()
-    // let _a = await int.a()
-    // let _c = await int.c()
-    // console.log('recovered balanceA: ' + _seq)
-    // console.log('recovered balanceC: ' + _addr)
-    // console.log('recovered addressA: ' + _a)
-    // console.log('recovered addressC: ' + _c)
-    console.log('Judge resolution: ' + open[5][2])
+    //await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
 
     console.log('\n')
     console.log('Starting payments...')
@@ -229,178 +215,229 @@ contract('N Party payment channel', function(accounts) {
     console.log('recovered party number: ' + _n)
 
 
-//     // Invalid state challenge case
+    // Settle state case
+    // init state
+    int = await Interpreter.new()
 
-//     // ----------- valid state -------------- //
-//     msg = generateState(0, 0, accounts[0], accounts[1], 10, 5)
+    console.log('\nSettle State Case')
+    msg = generateState(0, 0, 3, accounts[0], accounts[1], accounts[2], 10, 5, 2)
 
-//     console.log('State input: ' + msg)
+    console.log('State input: ' + msg)
 
 
-//     // Hashing and signature
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
 
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     r = sig1.substr(0,66)
-//     s = "0x" + sig1.substr(66,64)
-//     v = 27
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 28
 
-//     res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
-//     numChan = await cm.numChannels()
+    res = await cm.openChannel(web3.toWei(5, 'ether'), 0, int.address, msg, v, r, s, {from: accounts[0], value: web3.toWei(10, 'ether')})
+    numChan = await cm.numChannels()
 
-//     event_args = res.logs[0].args
+    event_args = res.logs[0].args
 
-//     channelId = event_args.channelId
-//     console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
-//     console.log('{Simulated network send from hub to receiver of initial state}')
+    channelId = event_args.channelId
+    console.log('Channels created: ' + numChan.toNumber() + ' channelId: ' + channelId)
+    console.log('{Simulated network send from hub to receiver of initial state}')
     
-//     sig2 = await web3.eth.sign(accounts[1], hmsg)
-//     r2 = sig2.substr(0,66)
-//     s2 = "0x" + sig2.substr(66,64)
-//     v2 = 28
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 28
 
-//     await cm.joinChannel(channelId, msg, v2, r2, s2, {from: accounts[1], value: web3.toWei(5, 'ether')})
+    await cm.joinChannel(channelId, msg, v2, r2, s2, {from: accounts[1], value: web3.toWei(5, 'ether')})
 
-//     open = await cm.getChannel(channelId)
-//     console.log('Channel joined, open: ' + open[5][0])
+    open = await cm.getChannel(channelId)
+    console.log('Channel joined, open: ' + open[5][0])
 
-//     // invalid state
-//     msg = generateState(0, 1, accounts[0], accounts[1], 100, 5)
+    var sig3 = await web3.eth.sign(accounts[2], hmsg)
+    var r3 = sig3.substr(0,66)
+    var s3 = "0x" + sig3.substr(66,64)
+    var v3 = 27
 
-//     console.log('State input: ' + msg)
+    await cm.joinChannel(channelId, msg, v3, r3, s3, {from: accounts[2], value: web3.toWei(2, 'ether')})
+    
+    open = await cm.getChannel(channelId)
+    console.log('Channel joined, open: ' + open[5][0])
 
+    // Settle State Case
 
-//     // Hashing and signature
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
-//     console.log('hashed msg: ' + hmsg)
+    console.log('\n')
 
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     r = sig1.substr(0,66)
-//     s = "0x" + sig1.substr(66,64)
-//     v = 27
+    console.log('Party B starting settleState')
+    msg = generateState(0, 1, 3, accounts[0], accounts[1], accounts[2], 10, 4, 3)
 
-//     console.log('{Simulated network send from hub to receiver of invalid state}')
-//     console.log('{requesting a valid state or starting settlement period}\n')
-
-//     console.log('Party B excersizing judge to begin settlement')
-
-//     //await cm.exerciseJudge(channelId, 'run(bytes)', sig1, msg)
-
-//     //await cm.closeWithChallenge(channelId)
-
-//     await cm.start
-
-//     open = await cm.getChannel(channelId)
+    console.log('State input: ' + msg)
 
 
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
 
-//     _seq = await int.b1()
-//     _addr = await int.b2()
-//     console.log('recovered balance A: ' + _seq)
-//     console.log('recovered balance B: ' + _addr)
-//     console.log('account[0]: ' + accounts[1])
-//     console.log('Judge resolution: ' + open[5][2])
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 28
 
-//     console.log('\n')
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 27
 
-//     console.log('Party B starting settleState')
-//     msg = generateState(0, 2, accounts[0], accounts[1], 9, 6)
+    sig3 = await web3.eth.sign(accounts[2], hmsg)
+    r3 = sig3.substr(0,66)
+    s3 = "0x" + sig3.substr(66,64)
+    v3 = 28
 
-//     console.log('State input: ' + msg)
+    sigV = []
+    sigR = []
+    sigS = []
 
+    sigV.push(v)
+    sigV.push(v2)
+    sigV.push(v3)
+    sigR.push(r)
+    sigR.push(r2)
+    sigR.push(r3)
+    sigS.push(s)
+    sigS.push(s2)
+    sigS.push(s3)
 
-//     // Hashing and signature
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
+    await cm.startSettleState(channelId, 'run(bytes)', sigV, sigR, sigS, msg)
 
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     r = sig1.substr(0,66)
-//     s = "0x" + sig1.substr(66,64)
-//     v = 28
+    open = await cm.getChannel(channelId)
 
-//     sig2 = await web3.eth.sign(accounts[1], hmsg)
-//     r2 = sig2.substr(0,66)
-//     s2 = "0x" + sig2.substr(66,64)
-//     v2 = 28
+    console.log('settlement period ends: ' + open[4])
+    console.log('current time stamp: ' + Math.round((new Date()).getTime() / 1000) + '\n')
 
-//     sigV = []
-//     sigR = []
-//     sigS = []
+    console.log('Party A challenging settle state with higher sequence num')
 
-//     sigV.push(v)
-//     sigV.push(v2)
-//     sigR.push(r)
-//     sigR.push(r2)
-//     sigS.push(s)
-//     sigS.push(s2)
+    msg = generateState(0, 2, 3, accounts[0], accounts[1], accounts[2], 10, 4, 3)
 
-//     await cm.startSettleState(channelId, 'run(bytes)', sigV, sigR, sigS, msg)
-
-//     open = await cm.getChannel(channelId)
-
-//     console.log('settlement period ends: ' + open[4])
-//     console.log('current time stamp: ' + Math.round((new Date()).getTime() / 1000) + '\n')
-
-//     console.log('Party A challenging settle state with higher sequence num')
-
-//     msg = generateState(0, 3, accounts[0], accounts[1], 8, 7)
-
-//     console.log('State input: ' + msg)
+    console.log('State input: ' + msg)
 
 
-//     // Hashing and signature
-//     hmsg = web3.sha3(msg, {encoding: 'hex'})
+    // Hashing and signature
+    hmsg = web3.sha3(msg, {encoding: 'hex'})
 
-//     sig1 = await web3.eth.sign(accounts[0], hmsg)
-//     r = sig1.substr(0,66)
-//     s = "0x" + sig1.substr(66,64)
-//     v = 28
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = 27
 
-//     sig2 = await web3.eth.sign(accounts[1], hmsg)
-//     r2 = sig2.substr(0,66)
-//     s2 = "0x" + sig2.substr(66,64)
-//     v2 = 27
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = 27
 
-//     sigV = []
-//     sigR = []
-//     sigS = []
+    sig3 = await web3.eth.sign(accounts[2], hmsg)
+    r3 = sig3.substr(0,66)
+    s3 = "0x" + sig3.substr(66,64)
+    v3 = 28
 
-//     sigV.push(v)
-//     sigV.push(v2)
-//     sigR.push(r)
-//     sigR.push(r2)
-//     sigS.push(s)
-//     sigS.push(s2)
+    console.log('balance A before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance B before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+    console.log('balance C before close: ' + web3.fromWei(web3.eth.getBalance(accounts[2])))
 
-//     await cm.challengeSettleState(channelId, msg, sigV, sigR, sigS, 'run(bytes)')
+    sigV = []
+    sigR = []
+    sigS = []
 
-//     open = await cm.getChannel(channelId)
+    sigV.push(v)
+    sigV.push(v2)
+    sigV.push(v3)
+    sigR.push(r)
+    sigR.push(r2)
+    sigR.push(r3)
+    sigS.push(s)
+    sigS.push(s2)
+    sigS.push(s3)
 
-//     console.log('\nchallenged new state: ' + open[7])
-//     console.log('\nclosing channel with settle timeout')
+//     console.log(sigV)
+//     console.log(sigR)
 
-//     console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
-//     console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+    await cm.challengeSettleState(channelId, msg, sigV, sigR, sigS, 'run(bytes)')
+    await cm.closeWithTimeout(channelId);
 
-//     await cm.closeWithTimeout(channelId);
+    console.log('balance A after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    console.log('balance B after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+    console.log('balance C after close: ' + web3.fromWei(web3.eth.getBalance(accounts[2])) + '\n')
 
-//     open = await cm.getChannel(channelId)
+    _b1= await int.b1()
+    _b2 = await int.b2()
+    _b3 = await int.b3()
+    _a = await int.a()
+    _b = await int.b()
+    _c = await int.c()
+    _n = await int.numParties()
+    console.log('recovered balanceA: ' + _b1)
+    console.log('recovered balanceB: ' + _b2)
+    console.log('recovered balanceC: ' + _b3)
+    console.log('recovered addressA: ' + _a)
+    console.log('recovered addressB: ' + _b)
+    console.log('recovered addressC: ' + _c)
+    console.log('recovered party number: ' + _n)
 
-//     _seq = await int.b1()
-//     _addr = await int.b2()
-//     console.log('recovered balance A: ' + _seq)
-//     console.log('recovered balance B: ' + _addr)
-//     console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
-//     console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
-//     console.log('Channel status: ' + open[5][0])
-//     // TODO decide what to do with invalid state sends. Clients should probably just
-//     // respond saying they wont sign it, please give me a correct one or I'll close 
-//     // with previous state.
 
-//     // challenge settle State
-//     // Here we build a case where the two parties can not agree on a state that has
-//     // a close boolean sentinel. The parties must start a settlement period where the
-//     // last highest sequence agreed upon non-close sentinel state may be presented
+    // msg = generateState(0, 3, accounts[0], accounts[1], 8, 7)
+
+    // console.log('State input: ' + msg)
+
+
+    // // Hashing and signature
+    // hmsg = web3.sha3(msg, {encoding: 'hex'})
+
+    // sig1 = await web3.eth.sign(accounts[0], hmsg)
+    // r = sig1.substr(0,66)
+    // s = "0x" + sig1.substr(66,64)
+    // v = 28
+
+    // sig2 = await web3.eth.sign(accounts[1], hmsg)
+    // r2 = sig2.substr(0,66)
+    // s2 = "0x" + sig2.substr(66,64)
+    // v2 = 27
+
+    // sigV = []
+    // sigR = []
+    // sigS = []
+
+    // sigV.push(v)
+    // sigV.push(v2)
+    // sigR.push(r)
+    // sigR.push(r2)
+    // sigS.push(s)
+    // sigS.push(s2)
+
+    // await cm.challengeSettleState(channelId, msg, sigV, sigR, sigS, 'run(bytes)')
+
+    // open = await cm.getChannel(channelId)
+
+    // console.log('\nchallenged new state: ' + open[7])
+    // console.log('\nclosing channel with settle timeout')
+
+    // console.log('balance sender before close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    // console.log('balance receiver before close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])))
+
+    // await cm.closeWithTimeout(channelId);
+
+    // open = await cm.getChannel(channelId)
+
+    // _seq = await int.b1()
+    // _addr = await int.b2()
+    // console.log('recovered balance A: ' + _seq)
+    // console.log('recovered balance B: ' + _addr)
+    // console.log('balance sender after close: ' + web3.fromWei(web3.eth.getBalance(accounts[0])))
+    // console.log('balance receiver after close: ' + web3.fromWei(web3.eth.getBalance(accounts[1])) + '\n')
+    // console.log('Channel status: ' + open[5][0])
+    // // TODO decide what to do with invalid state sends. Clients should probably just
+    // // respond saying they wont sign it, please give me a correct one or I'll close 
+    // // with previous state.
+
+    // // challenge settle State
+    // // Here we build a case where the two parties can not agree on a state that has
+    // // a close boolean sentinel. The parties must start a settlement period where the
+    // // last highest sequence agreed upon non-close sentinel state may be presented
 
   })
 
