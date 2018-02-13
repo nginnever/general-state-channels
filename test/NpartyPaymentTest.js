@@ -184,14 +184,15 @@ contract('N Party payment channel', function(accounts) {
 
 //     console.log(sigV)
 //     console.log(sigR)
+    
+    // this needs getter to access in N party interpreter
+    // let isjoinA = await int.participants(accounts[0])[3]
+    // let isjoinB = await int.participants(accounts[1])[3]
+    // let isjoinC = await int.participants(accounts[2])[3]
 
-    let isjoinA = await int.joinedParties(accounts[0])
-    let isjoinB = await int.joinedParties(accounts[1])
-    let isjoinC = await int.joinedParties(accounts[2])
-
-    console.log('isJoined A: ' + isjoinA)
-    console.log('isJoined B: ' + isjoinB)
-    console.log('isJoined C: ' + isjoinC)
+    // console.log('isJoined A: ' + isjoinA)
+    // console.log('isJoined B: ' + isjoinB)
+    // console.log('isJoined C: ' + isjoinC)
 
     await cm.closeChannel(channelId, msg, sigV, sigR, sigS)
 

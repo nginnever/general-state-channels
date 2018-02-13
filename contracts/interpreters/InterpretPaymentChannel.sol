@@ -65,6 +65,7 @@ contract InterpretPaymentChannel is InterpreterInterface {
         // punish the violator
     }
 
+    // just look for receiver sig
     function quickClose(bytes _data) public returns (bool) {
         uint256 _b1;
         uint256 _bond;

@@ -10,7 +10,7 @@ contract ChannelManager {
 
     struct Channel
     {
-        uint256 bond;
+        uint256 bond; //in state
         uint256 bonded;
         InterpreterInterface interpreter;
         uint256 settlementPeriodLength;
@@ -27,8 +27,8 @@ contract ChannelManager {
     event ChannelCreated(bytes32 channelId, address indexed initiator);
 
     function openChannel(
-        uint _bond, 
-        uint _settlementPeriod, 
+        uint _bond,
+        uint _settlementPeriod,
         address _interpreter,
         bytes _data,
         uint8 _v,
@@ -80,12 +80,12 @@ contract ChannelManager {
         // require(channels[_id].state == _data);
         // require the channel is not open yet
         require(channels[_id].booleans[0] == 0);
-        // replace bond with balance?
+        // replace bond with balance? check balance 
         //require(msg.value == channels[_id].bond);
 
         // check that the state is signed by the sender and sender is in the state
         address _joiningParty = _getSig(_data, _v, _r, _s);
-        require(msg.sender == _joiningParty);
+
         require(channels[_id].interpreter.isAddressInState(_joiningParty));
 
         if(channels[_id].interpreter.allJoined()) {

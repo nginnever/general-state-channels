@@ -20,18 +20,27 @@ contract InterpretNPartyPayments is InterpreterInterface {
     address public a;
     address public b;
     address public c;
-    uint256[] bals;
+
     bool allJoin = false;
     uint256 public numJoined = 0;
     uint256 public numParties = 0;
 
-    mapping(address => uint256) balances;
-    mapping(address => address) public joinedParties;
-    mapping(address => bool) inState;
+    struct Participant {
+        uint256 balance;
+        address owner;
+        bool inState;
+        bool joined;
+    }
+
+    mapping(address => Participant) participants;
+
+    // mapping(address => uint256) balances;
+    // mapping(address => address) public joinedParties;
+    // mapping(address => bool) inState;
     address[] partyArr;
 
-    function interpret(bytes _data) public returns (bool) {
 
+    function interpret(bytes _data) public returns (bool) {
         return true;
     }
 
@@ -60,9 +69,6 @@ contract InterpretNPartyPayments is InterpreterInterface {
             isHigher2 := mload(add(_data2, 64))
         }
 
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
         require(isHigher1 > isHigher2);
         return true;
     }
@@ -82,21 +88,30 @@ contract InterpretNPartyPayments is InterpreterInterface {
     }
 
     function isAddressInState(address _queryAddress) public returns (bool) {
-        require(inState[_queryAddress] != false);
-        require(joinedParties[_queryAddress] == 0x0);
+        //require(inState[_queryAddress] != false);
+        //require(joinedParties[_queryAddress] == 0x0);
+        require(participants[_queryAddress].owner != 0x0);
+        require(participants[_queryAddress].inState == true);
 
-        joinedParties[_queryAddress] = _queryAddress;
-        partyArr.push(_queryAddress);
-        numJoined++;
-        //require(_queryAddress == _a || _queryAddress == _b);
+        if(participants[_queryAddress].joined == false) {
+            participants[_queryAddress].joined == true;
+            numJoined++;
+        }
+
+        //joinedParties[_queryAddress] = _queryAddress;
+        //participants[_queryAddress].owner = _queryAddress;
+        //partyArr.push(_queryAddress);
+        //numJoined++;
+
         return true;
     }
 
     function hasAllSigs(address[] _recovered) public returns (bool) {
         require(_recovered.length == numParties);
-        //hack indexes for bug here with the 0 element of the array being populated with 000.. (maybe size of arr)
+
         for(uint i=0; i<_recovered.length; i++) {
-            require(joinedParties[_recovered[i]] == _recovered[i]);
+            //require(joinedParties[_recovered[i]] == _recovered[i]);
+            require(participants[_recovered[i]].inState == true);
         }
 
         return true;
@@ -111,10 +126,8 @@ contract InterpretNPartyPayments is InterpreterInterface {
     }
 
     function challenge(address _violator, bytes _state) public {
-        // we do not close with a challenge for bi-directional. We assume
-        // that the client will close with a settlement period on last good state
-        // instead
-        require(1==2);
+        // todo
+        // require(1==2);
     }
 
     function quickClose(bytes _state) public returns (bool) {
@@ -122,15 +135,13 @@ contract InterpretNPartyPayments is InterpreterInterface {
         _decodeState(_state);
 
         for(uint i=0; i<numParties; i++) {
-            partyArr[i].transfer(balances[partyArr[i]]);
+            // total balances and bond check
+            partyArr[i].transfer(participants[partyArr[i]].balance);
         }
 
-        // b1 = _b1;
-        // b2 = _b2;
+        // check to be sure reverting here reverts the transfers
+        // balance total loop
 
-        // require(_b1 + _b2 == this.balance);
-        // _b.send(_b2);
-        // _a.send(_b1);
         return true;
     }
 
@@ -168,10 +179,18 @@ contract InterpretNPartyPayments is InterpreterInterface {
                 temp :=mload(add(state, pos))
             }
 
-            balances[tempA] = temp;
-            inState[tempA] = true;
+            if(participants[tempA].owner == 0x0) {
+                partyArr.push(tempA);
+            }
 
-            // for testing only
+            participants[tempA].balance = temp;
+            participants[tempA].owner = tempA;
+            participants[tempA].inState = true;
+
+            //balances[tempA] = temp;
+            //inState[tempA] = true;
+
+            // ---- for testing only
             if(i==0) {
                 a = tempA;
                 b1 = temp;
@@ -184,6 +203,7 @@ contract InterpretNPartyPayments is InterpreterInterface {
                 c = tempA;
                 b3 = temp;
             }
+            // ----
         }
     }
 
