@@ -10,6 +10,12 @@ contract InterpretBattleChannel is InterpreterInterface {
     // [96-127] number of cats in channel
     // battle cat 1
     // [] owner
+    // [] kitty id
+    // [] base power
+    // [] wins
+    // [] losses
+    // [] level
+    // [] cool down
     // [] HP hit point
     // [] DP defense points
     // [] AP attack points
@@ -26,6 +32,19 @@ contract InterpretBattleChannel is InterpreterInterface {
     // ...
 
     uint8[12] attacks = [12, 24, 4, 16, 32, 2, 20, 8, 40, 36, 14, 28];
+
+    struct BattleKitty {
+        uint128 basePower;
+        uint64 wins;
+        uint64 loses;
+        uint8 level;
+        uint64 coolDown;
+        uint128[3] baseStats;
+        uint8[3] attacks;
+    }
+
+    mapping(uint256 => BattleKitty) battleKitties;
+    // ---------------
 
     uint256 public b1;
     uint256 public b2;
