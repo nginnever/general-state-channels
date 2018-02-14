@@ -20,12 +20,12 @@ contract InterpretBattleChannel is InterpreterInterface {
     // ...
 
     // Attack Lookup table
-    // [0] = Attack1
-    // [1] = Attack2
-    // [2] = Attack3
+    // [0] = Attack1 damage
+    // [1] = Attack2 damage
+    // [2] = Attack3 damage
     // ...
-    
-    uint32[12] attacks = [12, 24, 4, 16, 32, 2, 20, 8, 40, 36, 14, 28];
+
+    uint8[12] attacks = [12, 24, 4, 16, 32, 2, 20, 8, 40, 36, 14, 28];
 
     uint256 public b1;
     uint256 public b2;
