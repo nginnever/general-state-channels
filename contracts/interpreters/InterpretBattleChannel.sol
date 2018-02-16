@@ -41,34 +41,34 @@ contract InterpretBattleChannel is InterpreterInterface {
         uint64 coolDown;
         uint128[3] baseStats;
         uint8[3] attacks;
+        address owner;
+        uint256 balance;
+        bool inState;
+        bool joined;
     }
 
-    mapping(uint256 => BattleKitty) battleKitties;
+    mapping(address => BattleKitty) public battleKitties;
     // ---------------
 
-    uint256 public b1;
-    uint256 public b2;
-    uint256 public b3;
-    address public a;
-    address public b;
-    address public c;
+    address public tempA;
+    uint public poss;
+    uint public id;
+    uint128 public basePower;
+    uint64 public wins;
+    uint64 public losses;
+    uint8 public level;
+    uint64 public coolDown;
+    uint128 public hp;
+    uint128 public dp;
+    uint128 public ap;
+    uint8 public a1;
+    uint8 public a2;
+    uint8 public a3;
 
     bool allJoin = false;
     uint256 public numJoined = 0;
     uint256 public numParties = 0;
 
-    struct Participant {
-        uint256 balance;
-        address owner;
-        bool inState;
-        bool joined;
-    }
-
-    mapping(address => Participant) participants;
-
-    // mapping(address => uint256) balances;
-    // mapping(address => address) public joinedParties;
-    // mapping(address => bool) inState;
     address[] partyArr;
 
 
@@ -122,11 +122,11 @@ contract InterpretBattleChannel is InterpreterInterface {
     function isAddressInState(address _queryAddress) public returns (bool) {
         //require(inState[_queryAddress] != false);
         //require(joinedParties[_queryAddress] == 0x0);
-        require(participants[_queryAddress].owner != 0x0);
-        require(participants[_queryAddress].inState == true);
+        require(battleKitties[_queryAddress].owner != 0x0);
+        require(battleKitties[_queryAddress].inState == true);
 
-        if(participants[_queryAddress].joined == false) {
-            participants[_queryAddress].joined == true;
+        if(battleKitties[_queryAddress].joined == false) {
+            battleKitties[_queryAddress].joined == true;
             numJoined++;
         }
 
@@ -143,7 +143,7 @@ contract InterpretBattleChannel is InterpreterInterface {
 
         for(uint i=0; i<_recovered.length; i++) {
             //require(joinedParties[_recovered[i]] == _recovered[i]);
-            require(participants[_recovered[i]].inState == true);
+            require(battleKitties[_recovered[i]].inState == true);
         }
 
         return true;
@@ -168,7 +168,7 @@ contract InterpretBattleChannel is InterpreterInterface {
 
         for(uint i=0; i<numParties; i++) {
             // total balances and bond check
-            partyArr[i].transfer(participants[partyArr[i]].balance);
+            partyArr[i].transfer(battleKitties[partyArr[i]].balance);
         }
 
         // check to be sure reverting here reverts the transfers
@@ -190,50 +190,75 @@ contract InterpretBattleChannel is InterpreterInterface {
     }
 
     function _decodeState(bytes state) internal {
-        uint numParty;
+        uint numKitties;
+        address _tempA;
+        uint _id;
+        uint128 _basePower;
+        //uint64 _wins;
+        //uint64 _losses;
+        uint8 _level;
+        uint64 _coolDown;
+        uint128 _hp;
+        uint128 _dp;
+        uint128 _ap;
+        uint8 _a1;
+        uint8 _a2;
+        uint8 _a3;
+
         assembly {
-            numParty := mload(add(state, 96))
+            numKitties := mload(add(state, 128))
         }
 
-        numParties = numParty;
+        numParties = numKitties;
 
-        for(uint i=0; i<numParty; i++){
+        for(uint i=0; i<numKitties; i++){
             uint pos = 0;
-            uint posA = 0;
-            address tempA;
-            uint temp;
 
-            posA = 128+(32*i);
-            pos = 128+(32*numParty)+(32*i);
+            //posA = 128+(32*i);
+            pos = 160+(11*32*i);
+            poss = 10;
 
             assembly {
-                tempA:= mload(add(state, posA))
-                temp :=mload(add(state, pos))
+                _tempA:= mload(add(state, pos))
+                _id :=mload(add(state, add(pos,32)))
+                _basePower :=mload(add(state, add(pos,64)))
+                //_wins :=mload(add(state, add(pos,96)))
+                //_losses :=mload(add(state, add(pos,128)))
+                _level :=mload(add(state, add(pos,96)))
+                _coolDown :=mload(add(state, add(pos,128)))
+                _hp :=mload(add(state, add(pos,160)))
+                _dp :=mload(add(state, add(pos,192)))
+                _ap :=mload(add(state, add(pos,224)))
+                _a1 :=mload(add(state, add(pos,256)))
+                _a2 :=mload(add(state, add(pos,288)))
+                _a3 :=mload(add(state, add(pos,320)))
             }
 
-            if(participants[tempA].owner == 0x0) {
-                partyArr.push(tempA);
+            if(battleKitties[_tempA].owner == 0x0) {
+                partyArr.push(_tempA);
             }
 
-            participants[tempA].balance = temp;
-            participants[tempA].owner = tempA;
-            participants[tempA].inState = true;
+            //battleKitties[tempA].balance = temp;
+            battleKitties[_tempA].owner = _tempA;
+            battleKitties[_tempA].inState = true;
+            battleKitties[_tempA].basePower = _basePower;
 
             //balances[tempA] = temp;
             //inState[tempA] = true;
 
             // ---- for testing only
-            if(i==0) {
-                a = tempA;
-                b1 = temp;
-            }
             if(i==1) {
-                b = tempA;
-                b2 = temp;
-            }
-            if(i==2) {
-                c = tempA;
-                b3 = temp;
+                tempA = _tempA;
+                id = _id;
+                basePower = _basePower;
+                //wins = _wins;
+                //losses = _losses;
+                hp = _hp;
+                dp = _dp;
+                ap = _ap;
+                level = _level;
+                a1 = _a1;
+                a3 = _a3;
             }
             // ----
         }

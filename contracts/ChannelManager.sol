@@ -7,6 +7,7 @@ contract ChannelManager {
     bool public judgeRes = true;
     address[] public _tempSigs;
     uint public _length;
+    address public testAddy;
 
     struct Channel
     {
@@ -37,14 +38,17 @@ contract ChannelManager {
         public 
         payable 
     {
+        testAddy = _interpreter;
+
         InterpreterInterface candidateInterpreterContract = InterpreterInterface(_interpreter);
 
         // NOTE: verify that a contract is what we expect - https://github.com/Lunyr/crowdsale-contracts/blob/cfadd15986c30521d8ba7d5b6f57b4fefcc7ac38/contracts/LunyrToken.sol#L117
-        require(candidateInterpreterContract.isInterpreter());
+        //require(candidateInterpreterContract.isInterpreter());
 
         // check the account opening a channel signed the initial state
         address s = _getSig(_data, _v, _r, _s);
-        require(s == msg.sender);
+        // consider if this is required
+        require(s == msg.sender || s == tx.origin);
 
         // make sure the sig matches the address in state
         require(candidateInterpreterContract.initState(_data));
