@@ -18,10 +18,10 @@ contract InterpretBidirectional is InterpreterInterface {
     address public b;
     bool public allJoin = false;
 
-    function interpret(bytes _data) public returns (bool) {
+    // function interpret(bytes _data) public returns (bool) {
 
-      return true;
-    }
+    //   return true;
+    // }
 
     function initState(bytes _data) public returns (bool) {
         uint256 _b1;
@@ -48,7 +48,7 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
-    function isSequenceHigher(bytes _data1, bytes _data2) public returns (bool) {
+    function isSequenceHigher(bytes _data1, bytes _data2) public pure returns (bool) {
         uint isHigher1;
         uint isHigher2;
 
@@ -64,20 +64,6 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
-    function isSequenceEqual(bytes _data, uint _seq) public returns (bool) {
-        uint isEqual;
-
-        assembly {
-            isEqual := mload(add(_data, 64))
-        }
-
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
-        require(isEqual == _seq);
-        return true;
-    }
-
     function isAddressInState(address _queryAddress) public returns (bool) {
         require(_queryAddress == a || _queryAddress == b);
         if(a != 0x0 && b != 0x0) {
@@ -87,16 +73,6 @@ contract InterpretBidirectional is InterpreterInterface {
     }
 
     function hasAllSigs(address[] _recovered) public returns (bool) {
-        //uint256 _b1;
-        //uint256 _b2;
-        //address _a;
-        //address _b;
-
-        //(_b1, _b2, _a, _b) = decodeState(_data);
-
-        //a = _a;
-        //b = _b;
-
         for(uint i=0; i<_recovered.length; i++) {
             if(_recovered[i] == a) {
                 require(_recovered[i+1] == b);

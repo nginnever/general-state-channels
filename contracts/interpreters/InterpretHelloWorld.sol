@@ -29,10 +29,10 @@ contract InterpretHelloWorld is InterpreterInterface {
     // to the challengers local state. If the outcome is not part of the word, then 
     // the challenge was successful.
 
-    function interpret(bytes _data) public returns (bool) {
+    // function interpret(bytes _data) public returns (bool) {
 
-      return true;
-    }
+    //   return true;
+    // }
 
     function isClose(bytes _data) public returns(bool) {
         uint isClosed;
@@ -45,7 +45,7 @@ contract InterpretHelloWorld is InterpreterInterface {
         return true;
     }
 
-    function isSequenceHigher(bytes _data, uint _seq) public returns (bool) {
+    function isSequenceHigher(bytes _data, uint _seq) public pure returns (bool) {
         uint isHigher;
 
         assembly {
@@ -59,30 +59,12 @@ contract InterpretHelloWorld is InterpreterInterface {
         return true;
     }
 
-    function isSequenceEqual(bytes _data, uint _seq) public returns (bool) {
-        uint isEqual;
-
-        assembly {
-            isEqual := mload(add(_data, 64))
-        }
-
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
-        require(isEqual == _seq);
-        return true;
-    }
-
     function isAddressInState(address _queryAddress) public returns (bool) {
         return true;
         
     }
 
     function challenge(address _violator, bytes _state) public {
-        // punish the violator
-    }
-
-    function timeout(bytes _state) public {
         // punish the violator
     }
 

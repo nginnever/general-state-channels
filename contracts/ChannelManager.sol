@@ -1,17 +1,13 @@
 pragma solidity ^0.4.18;
 
 import "./interpreters/InterpreterInterface.sol";
-// import "./lib/ECRecovery.sol";
 
 contract ChannelManager {
     bool public judgeRes = true;
-    address[] public _tempSigs;
-    uint public _length;
-    address public testAddy;
 
     struct Channel
     {
-        uint256 bond; //in state
+        uint256 bond;
         uint256 bonded;
         InterpreterInterface interpreter;
         uint256 settlementPeriodLength;
@@ -39,20 +35,19 @@ contract ChannelManager {
         public 
         payable 
     {
-        testAddy = _interpreter;
-
         InterpreterInterface candidateInterpreterContract = InterpreterInterface(_interpreter);
 
         // NOTE: verify that a contract is what we expect - https://github.com/Lunyr/crowdsale-contracts/blob/cfadd15986c30521d8ba7d5b6f57b4fefcc7ac38/contracts/LunyrToken.sol#L117
         //require(candidateInterpreterContract.isInterpreter());
 
-        // check the account opening a channel signed the initial state
+        // check the account opening the channel signed the initial state
         address s = _getSig(_data, _v, _r, _s);
         // consider if this is required
         require(s == msg.sender || s == tx.origin);
 
-        // make sure the sig matches the address in state
+        // load the interpreter with the initial state
         require(candidateInterpreterContract.initState(_data));
+        // make sure the sig matches the address in state
         require(candidateInterpreterContract.isAddressInState(s));
 
         // send bond to the interpreter contract. This contract will read agreed upon state 
@@ -75,7 +70,6 @@ contract ChannelManager {
         numChannels++;
         var _id = keccak256(now + numChannels);
         channels[_id] = _channel;
-
 
         ChannelCreated(_id, msg.sender);
     }
@@ -134,7 +128,6 @@ contract ChannelManager {
 
     // Fast close: Both parties agreed to close
     // check that a valid state is signed by both parties
-    // change this to an optional update function to checkpoint state
     function closeChannel(
         bytes32 _id, 
         bytes _data,
@@ -146,24 +139,17 @@ contract ChannelManager {
 
         address[] memory tempSigs = new address[](_v.length);
 
-        _length = tempSigs.length;
-
         for(uint i=0; i<_r.length; i++) {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
             tempSigs[i] = participant;
         }
-
-        _tempSigs = tempSigs;
-        //_length = _tempSigs.length;
 
         // make sure all parties have signed
         require(channels[_id].interpreter.hasAllSigs(tempSigs));
 
         //  If the first 32 bytes of the state represent true 0x00...01 then both parties have
         // signed a close channel agreement on this representation of the state.
-
         // check for this sentinel value
-
         require(channels[_id].interpreter.isClose(_data));
         require(channels[_id].interpreter.quickClose(_data));
 
@@ -174,7 +160,8 @@ contract ChannelManager {
 
     // Closing with the following does not need to contain a flag in state for an agreed close
 
-    // requires judge exercised
+    // requires judge exercised, this is for punishing an an invalid state transition
+    // this may not be relevant for state channels with full party signature consensus
     function closeWithChallenge(bytes32 _id) public {
         require(channels[_id].disputeAddresses[0] != 0x0);
         require(channels[_id].booleans[2] == 0);
@@ -183,14 +170,16 @@ contract ChannelManager {
         channels[_id].booleans[0] = 0;
     }
 
+    // Allow closing with a previously agreed upon state after some challenge period
     function closeWithTimeout(bytes32 _id) public {
         require(channels[_id].settlementPeriodEnd <= now);
 
-        // handle timeout logic
+        // same close as agreed upon close
         channels[_id].interpreter.quickClose(channels[_id].state);
         channels[_id].booleans[0] = 0;
     }
 
+    // Function to allow parties to present a high sequence valid consensus signed state
     function challengeSettleState(bytes32 _id, bytes _data, uint8[] _v, bytes32[] _r, bytes32[] _s, string _method) public {
         // require the channel to be in a settling state
         require(channels[_id].booleans[1] == 1);
@@ -226,6 +215,7 @@ contract ChannelManager {
         channels[_id].state = _data;
     }
 
+    // Begin the process of presenting last known good state
     function startSettleState(bytes32 _id, string _method, uint8[] _v, bytes32[] _r, bytes32[] _s, bytes _data) public {
         require(channels[_id].booleans[1] == 0);
 
@@ -242,7 +232,7 @@ contract ChannelManager {
         require(channels[_id].interpreter.hasAllSigs(tempSigs));  
 
         // In order to start settling we run the judge to be sure this is a valid state transition
-
+        // This should also not be necessary under the consensus model
         if (channels[_id].interpreter.call(bytes4(bytes32(keccak256(_method))), bytes32(32), bytes32(dataLength), _data)) {
             judgeRes = true;
             channels[_id].booleans[2] = 1;

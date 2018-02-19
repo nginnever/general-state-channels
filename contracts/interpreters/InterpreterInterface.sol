@@ -9,13 +9,11 @@ contract InterpreterInterface {
 
     // Notice: all functions must return pass or fail or nothing
 
-    function interpret(bytes _data) public returns (bool);
+    // function interpret(bytes _data) public returns (bool);
 
     function isClose(bytes _data) public returns (bool);
 
-    function isSequenceHigher(bytes _data1, bytes _data2) public returns (bool);
-
-    function isSequenceEqual(bytes _data, uint _seq) public returns (bool);
+    function isSequenceHigher(bytes _data1, bytes _data2) public pure returns (bool);
 
     function isAddressInState(address _queryAddress) public returns (bool);
 

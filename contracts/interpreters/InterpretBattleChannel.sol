@@ -52,20 +52,6 @@ contract InterpretBattleChannel is InterpreterInterface {
     mapping(address => BattleKitty) public battleKitties;
     // ---------------
 
-    address public tempA;
-    uint public id;
-    uint128 public basePower;
-    uint64 public wins;
-    uint64 public losses;
-    uint8 public level;
-    uint64 public coolDown;
-    uint128 public hp;
-    uint128 public dp;
-    uint128 public ap;
-    uint8 public a1;
-    uint8 public a2;
-    uint8 public a3;
-
     bool allJoin = false;
     uint256 public numJoined = 0;
     uint256 public numParties = 0;
@@ -73,9 +59,9 @@ contract InterpretBattleChannel is InterpreterInterface {
     address[] partyArr;
 
 
-    function interpret(bytes _data) public returns (bool) {
-        return true;
-    }
+    // function interpret(bytes _data) public returns (bool) {
+    //     return true;
+    // }
 
     function initState(bytes _data) public returns (bool) {
         _decodeState(_data);
@@ -93,7 +79,7 @@ contract InterpretBattleChannel is InterpreterInterface {
         return true;
     }
 
-    function isSequenceHigher(bytes _data1, bytes _data2) public returns (bool) {
+    function isSequenceHigher(bytes _data1, bytes _data2) public pure returns (bool) {
         uint isHigher1;
         uint isHigher2;
 
@@ -106,23 +92,7 @@ contract InterpretBattleChannel is InterpreterInterface {
         return true;
     }
 
-    function isSequenceEqual(bytes _data, uint _seq) public returns (bool) {
-        uint isEqual;
-
-        assembly {
-            isEqual := mload(add(_data, 64))
-        }
-
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
-        require(isEqual == _seq);
-        return true;
-    }
-
     function isAddressInState(address _queryAddress) public returns (bool) {
-        //require(inState[_queryAddress] != false);
-        //require(joinedParties[_queryAddress] == 0x0);
         require(battleKitties[_queryAddress].owner != 0x0);
         require(battleKitties[_queryAddress].inState == true);
 
@@ -130,11 +100,6 @@ contract InterpretBattleChannel is InterpreterInterface {
             battleKitties[_queryAddress].joined == true;
             numJoined++;
         }
-
-        //joinedParties[_queryAddress] = _queryAddress;
-        //participants[_queryAddress].owner = _queryAddress;
-        //partyArr.push(_queryAddress);
-        //numJoined++;
 
         return true;
     }
@@ -239,7 +204,6 @@ contract InterpretBattleChannel is InterpreterInterface {
                 partyArr.push(_tempA);
             }
 
-            //battleKitties[tempA].balance = temp;
             battleKitties[_tempA].owner = _tempA;
             battleKitties[_tempA].inState = true;
             battleKitties[_tempA].basePower = _basePower;
@@ -250,22 +214,6 @@ contract InterpretBattleChannel is InterpreterInterface {
             battleKitties[_tempA].attacks[1] = _a2;
             battleKitties[_tempA].attacks[2] = _a3;
             battleKitties[_tempA].chosenAttack = _chosenAttack;
-
-            // ---- for testing only
-            if(i==1) {
-                tempA = _tempA;
-                id = _id;
-                basePower = _basePower;
-                //wins = _wins;
-                //losses = _losses;
-                hp = _hp;
-                dp = _dp;
-                ap = _ap;
-                //level = _level;
-                a1 = _a1;
-                a3 = _a3;
-            }
-            // ----
         }
     }
 

@@ -10,22 +10,18 @@ contract InterpretPaymentChannel is InterpreterInterface {
     // [96-127] bond 
     // [128-159] balance of receiver
 
-    uint public b;
-    uint public ba;
-    address public a1;
+    // function interpret(bytes _data) public returns (bool) {
 
-    function interpret(bytes _data) public returns (bool) {
-
-      return true;
-    }
+    //   return true;
+    // }
 
     // This always returns true since the receiver should only
     // sign and close the highest balance they have
-    function isClose(bytes _data) public returns(bool) {
+    function isClose() public returns(bool) {
         return true;
     }
 
-    function isSequenceHigher(bytes _data, uint _seq) public returns (bool) {
+    function isSequenceHigher(bytes _data, uint _seq) public pure returns (bool) {
         uint isHigher;
 
         assembly {
@@ -39,29 +35,11 @@ contract InterpretPaymentChannel is InterpreterInterface {
         return true;
     }
 
-    function isSequenceEqual(bytes _data, uint _seq) public returns (bool) {
-        uint isEqual;
-
-        assembly {
-            isEqual := mload(add(_data, 160))
-        }
-
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
-        require(isEqual == _seq);
-        return true;
-    }
-
-    function isAddressInState(address _queryAddress) public returns (bool) {
+    function isAddressInState() public returns (bool) {
         return true;
     }
 
     function challenge(address _violator, bytes _state) public {
-        // punish the violator
-    }
-
-    function timeout(bytes _state) public {
         // punish the violator
     }
 
@@ -79,9 +57,6 @@ contract InterpretPaymentChannel is InterpreterInterface {
           _b1 := mload(add(_data, 160))
         }
 
-        b = _bond;
-        ba = _b1;
-        a1 = _b;
         require(_b1<=_bond && _b1>=0);
 
         require(_bond == this.balance);
@@ -90,10 +65,10 @@ contract InterpretPaymentChannel is InterpreterInterface {
         return true;
     }
 
-    function decodeState(bytes state) pure internal {
-        assembly {
+    // function decodeState(bytes state) pure internal {
+    //     assembly {
 
-        }
-    }
+    //     }
+    // }
 
 }
