@@ -11,9 +11,7 @@ The current version of this implementation requires that the agreed upon interpr
   - Bi-directional Payment Channel
   - N-Party Payment Channel (N <= 50)
   - Crypto Kitties Battle Channel
-- Definitions
 - Background Information
-- System Overview
 - Channel API
   - openChannel
   - joinChannel
@@ -23,21 +21,21 @@ The current version of this implementation requires that the agreed upon interpr
   - challengeSettleState
   - closeWithChallenge
   - getChannel
-- Interpreter API
+- Interpreter Interface
 - Roadmap
 - Contributing
-
-## Definitions:
-
-Channel Manager: The contract responsible for opening and closing channels. It instantiates the interpreter contracts. (Ideally only when a challenge is presented)
-
-Interpreters: These are the contracts that hold the logic responsible for assembling state bytes into meaningful representations. ie constructing the balances in a payment channel or determining the winner of a game. They provide judgement on valid state transitions and hold the bonds of the channel to be acted upon by interpreted state. The bonds will be held by the channel manager in the future as interpreters will be counterfactually instantiated.
 
 ## Background Information:
 
 TODO Outline Layer 2 solutions, L4 research, Spankchain research
 
-## Overview:
+### Definitions:
+
+Channel Manager: The contract responsible for opening and closing channels. It instantiates the interpreter contracts. (Ideally only when a challenge is presented)
+
+Interpreters: These are the contracts that hold the logic responsible for assembling state bytes into meaningful representations. ie constructing the balances in a payment channel or determining the winner of a game. They provide judgement on valid state transitions and hold the bonds of the channel to be acted upon by interpreted state. The bonds will be held by the channel manager in the future as interpreters will be counterfactually instantiated.
+
+### Overview:
 
 This POC is comprised of a channel manager contract that contains a mapping of channel structs. Channel structs hold a reference to the interpreter contract that is needed to handle final state. This will be replace in the future so that multiple state games may be played on the same channel bond. Closing the channel will only requiring reconstructing some final agreed upon state on the bond and not the intermediary final states of any other game that was not challenged and closed without channel consensus. This is like nesting many channels into one bonded channel.
 
@@ -56,7 +54,7 @@ The channel manager currently exposes the following to clients for opening, join
 
 ### openChannel
 
-```channelManager.openChannel(bond, settlementPeriod, interpreter, initialState, signature)```
+```channelManager.openChannel(bond, settlementPeriod, interpreter, initialState, signature, {from: participantAddress, value: bond})```
 
 Called by the initiator of a channel.
 
@@ -156,9 +154,41 @@ called by anyone after the settlement period has ended
 Parameters:
 - bytes32 channelID: The channel id that references the channel in the manager contract
 
-## Interpreter API
+## Interpreter Interface
 
-TODO
+All interpreter contracts must implement the following interface
+
+### isClose
+
+```function isClose(bytes _data) public returns (bool);```
+
+### isSequenceHiger
+
+```function isSequenceHigher(bytes _data1, bytes _data2) public returns (bool);```
+
+### isAddressInState
+
+```function isAddressInState(address _queryAddress) public returns (bool);```
+
+### hasAllSigs
+
+```function hasAllSigs(address[] recoveredAddresses) public returns (bool);```
+
+### quickClose
+
+```function quickClose(bytes _data) public returns (bool);```
+
+### allJoined
+
+```function allJoined() public returns (bool);```
+
+### inState
+
+```function initState(bytes _date) public returns (bool);```
+
+### run
+
+```function run(bytes _data) public;```
 
 ## Future Work / Roadmap
 
