@@ -8,7 +8,7 @@ Table of Contents:
 - Background Information
 - System Overview
 - Channel API
-- Interpreter Guide
+- Interpreter API
 - TODO
 - Contributing
 
@@ -24,3 +24,17 @@ Background Information:
 
 TODO Outline Layer 2 solutions, L4 research, Spankchain research
 
+System Overview:
+
+This POC is comprised of a channel manager contract that contains a mapping of channel structs. Channel structs hold a reference to the interpreter contract that is needed to handle final state. This will be replace in the future so that multiple state games may be played on the same channel bond. Closing the channel will only requiring reconstructing some final agreed upon state on the bond and not the intermediary final states of any other game that was not challenged and closed without channel consensus. This is like nesting many channels into one bonded channel.
+
+The interpreters for each single channel are constructed and placed in a library where reviewed interpreters for each type of state may be reused by different channels. In the future this library should build a reference for accepted byte code for interpreters that may be counterfacutally deployed when necessary. Alternatively interpreters may be deployed once and reused or called upon with variable state input if they do not store any state.
+
+To open a channel the client must assemble the initial state with the participants they plan to interact with. They sign this state and pass it to the createChannel() function. This function will create a channel object and initialize the interpreter with the initial channel state. To join the channel, the participants in the initial state must sign the state and provide this to the joinChannel() function in the manager. Once all parties in the state have joined the channel is flagged open and any settlements or closing may begin.
+
+Interpreters are predefined contracts that must follow a certain api and return boolean results that the channel manager needs to open, settle, and close. There is a guideline below on how developers may structure custom interpreter contracts for their applications that will work with the channel manager.
+
+Closing a channel may happen in two ways, fast with consensus or with byzantine faults with a delayed settlement period. To fast close, the state must be signed with initial sentinel value in its sequence of bytes that represents the participants will to close to the channel. If all parties have signed a state transition with this flag then the state may be acted upon immediately by the manager and interpreter contract to settle any balances, wagers, or state outcome. If this flag is not present and the participants can't agree on the final state, the settlement game starts and accepts the highest sequence signed state.
+
+
+Channel API:
