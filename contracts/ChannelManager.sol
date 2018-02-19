@@ -26,6 +26,7 @@ contract ChannelManager {
     uint256 public numChannels = 0;
 
     event ChannelCreated(bytes32 channelId, address indexed initiator);
+    event ChannelJoined(bytes32 channelId, address indexed joiningParty);
 
     function openChannel(
         uint _bond,
@@ -99,6 +100,8 @@ contract ChannelManager {
         channels[_id].bonded += msg.value;
 
         channels[_id].interpreter.transfer(msg.value);
+
+        ChannelJoined(_id, _joiningParty);
     }
 
     // This updates the state stored in the channel struct
