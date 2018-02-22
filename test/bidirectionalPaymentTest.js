@@ -65,7 +65,7 @@ contract('Bi-direction payment channel', function(accounts) {
     let open = await cm.getChannel(channelId)
     console.log('Channel joined, open: ' + open[5][0])
 
-    await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
+    //await cm.exerciseJudge(channelId, 'run(bytes)', v, r, s, msg)
 
     open = await cm.getChannel(channelId)
 

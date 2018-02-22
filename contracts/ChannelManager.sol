@@ -9,6 +9,7 @@ contract ChannelManager {
     {
         uint256 bond;
         uint256 bonded;
+        mapping(address => uint256) participants;
         InterpreterInterface interpreter;
         uint256 settlementPeriodLength;
         uint256 settlementPeriodEnd;
@@ -42,13 +43,15 @@ contract ChannelManager {
 
         // check the account opening the channel signed the initial state
         address s = _getSig(_data, _v, _r, _s);
+        address[] _participants;
+        _participants.push(s);
         // consider if this is required
         require(s == msg.sender || s == tx.origin);
 
         // load the interpreter with the initial state
-        require(candidateInterpreterContract.initState(_data));
+        // require(candidateInterpreterContract.initState(_data));
         // make sure the sig matches the address in state
-        require(candidateInterpreterContract.isAddressInState(s));
+        // require(candidateInterpreterContract.isAddressInState(s));
 
         // send bond to the interpreter contract. This contract will read agreed upon state 
         // and settle any outcomes of state. ie paying a wager on a game or settling a payment channel
@@ -59,6 +62,7 @@ contract ChannelManager {
         Channel memory _channel = Channel(
             _bond,
             msg.value,
+            //_participants,
             candidateInterpreterContract,
             _settlementPeriod,
             0,
@@ -74,22 +78,26 @@ contract ChannelManager {
         ChannelCreated(_id, msg.sender);
     }
 
-    // no protection for double joining, this should be reverted in the interpreter
     function joinChannel(bytes32 _id, bytes _data, uint8 _v, bytes32 _r, bytes32 _s) public payable{
-        // require(channels[_id].state == _data);
+        //require(channels[_id].state == _data);
         // require the channel is not open yet
-        require(channels[_id].booleans[0] == 0);
+        //require(channels[_id].booleans[0] == 0);
         // replace bond with balance? check balance 
         //require(msg.value == channels[_id].bond);
 
         // check that the state is signed by the sender and sender is in the state
         address _joiningParty = _getSig(_data, _v, _r, _s);
 
-        require(channels[_id].interpreter.isAddressInState(_joiningParty));
+        // double join protection
+        require(channels[_id].participants[_joiningParty] == 0);
+        channels[_id].participants[_joiningParty] = msg.value;
+        //require(channels[_id].interpreter.isAddressInState(_joiningParty));
 
-        if(channels[_id].interpreter.allJoined()) {
-            channels[_id].booleans[0] = 1;
-        }
+        // don't flag the channel open, the client may check the participants array to 
+        // see if all participants of the channel are bonded
+        // if(channels[_id].interpreter.allJoined()) {
+        //     channels[_id].booleans[0] = 1;
+        // }
 
         channels[_id].bonded += msg.value;
 
@@ -101,6 +109,7 @@ contract ChannelManager {
     // This updates the state stored in the channel struct
     // check that a valid state is signed by both parties
     // this only works for 2 party channels
+    // currently broken
     function checkpointState(
         bytes32 _id, 
         bytes _data, 
@@ -143,6 +152,8 @@ contract ChannelManager {
             address participant = _getSig(_data, _v[i], _r[i], _s[i]);
             tempSigs[i] = participant;
         }
+        // load the interpreter with the initial state
+        require(channels[_id].interpreter.initState(_data));
 
         // make sure all parties have signed
         require(channels[_id].interpreter.hasAllSigs(tempSigs));
@@ -228,6 +239,9 @@ contract ChannelManager {
             tempSigs[i] = participant;
         }
 
+        // load the interpreter with the initial state
+        require(channels[_id].interpreter.initState(_data));
+
         // make sure all parties have signed
         require(channels[_id].interpreter.hasAllSigs(tempSigs));  
 
@@ -296,6 +310,10 @@ contract ChannelManager {
             ch.disputeAddresses,
             ch.state
         );
+    }
+
+    function getBalance(bytes32 _id, address _participant) external view returns (uint256 bal) {
+        return channels[_id].participants[_participant];
     }
 
     function _getSig(bytes _d, uint8 _v, bytes32 _r, bytes32 _s) internal pure returns(address) {
