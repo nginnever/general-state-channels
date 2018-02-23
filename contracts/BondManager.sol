@@ -14,6 +14,7 @@ import "./ChannelRegistry.sol";
 import "./interpreters/InterpreterInterface.sol";
 
 contract BondManager {
+    // TODO: Allow token balances
     mapping(address => uint256) balances;
 
     ChannelRegistry public registry;
@@ -52,9 +53,9 @@ contract BondManager {
         // check the account opening a channel signed the initial state
         address s = _getSig(_state, _v, _r, _s);
         // consider if this is required
-        require(s == msg.sender || s == tx.origin);    
-        require(balances[s] == msg.value);
+        require(s == msg.sender || s == tx.origin);
         bond = _decodeState(_state);
+        require(balances[s] == msg.value);
 
         bonded += msg.value;
     }
@@ -71,6 +72,7 @@ contract BondManager {
         bonded += msg.value;
         numJoined++;
         if(numJoined == numParties) {
+            require(bond == bonded);
             booleans[0] = 1;
         }
     }
@@ -94,30 +96,36 @@ contract BondManager {
         _payout(tempSigs);
     }
 
-    function startSettleState(uint8[] _v, bytes32[] _r, bytes32[] _s, bytes _data) public {
+    function startSettleState(uint _gameIndex, uint8[] _v, bytes32[] _r, bytes32[] _s, bytes _data) public {
         require(booleans[1] == 0);
         require(_v.length == _r.length && _r.length == _s.length);
-
-        uint dataLength = _data.length;
-
-        address[] memory tempSigs = new address[](_v.length);
-
-        for(uint i=0; i<_v.length; i++) {
-            address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            tempSigs[i] = participant;
-        }
-
-        require(_hasAllSigs(tempSigs));
-        // consult the now deployed special channel logic to see if sequence is higher 
         InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
-        require(deployedInterpreter.isSequenceHigher(_data, state));
 
-        // consider running some logic on the state from the interpreter to validate 
-        // the new state obeys transition rules
+        if(_gameIndex == 0) {
+            uint dataLength = _data.length;
 
-        booleans[1] = 1;
-        settlementPeriodEnd = now + settlementPeriodLength;
-        state = _data;
+            address[] memory tempSigs = new address[](_v.length);
+
+            for(uint i=0; i<_v.length; i++) {
+                address participant = _getSig(_data, _v[i], _r[i], _s[i]);
+                tempSigs[i] = participant;
+            }
+
+            require(_hasAllSigs(tempSigs));
+            // consult the now deployed special channel logic to see if sequence is higher
+            // this also may not be necessary, just check sequence on challenges. what if 
+            // the initial state needs to be settled?
+            require(deployedInterpreter.isSequenceHigher(_data, state));
+
+            // consider running some logic on the state from the interpreter to validate 
+            // the new state obeys transition rules
+
+            booleans[1] = 1;
+            settlementPeriodEnd = now + settlementPeriodLength;
+            state = _data;
+        } else {
+            deployedInterpreter.startSettleStateGame(_gameIndex, _data, _v, _r, _s);
+        }
     }
 
     function challengeSettleState(bytes _data, uint8[] _v, bytes32[] _r, bytes32[] _s) public {
@@ -139,6 +147,12 @@ contract BondManager {
         // consult the now deployed special channel logic to see if sequence is higher 
         InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
         require(deployedInterpreter.isSequenceHigher(_data, state));
+
+        // consider running some logic on the state from the interpreter to validate 
+        // the new state obeys transition rules. The only invalid transition is trying to 
+        // create more tokens than the bond holds, since each contract is currently deployed
+        // for each channel, closing on a bad state like that would just fail at the channels
+        // expense.
 
         settlementPeriodEnd = now + settlementPeriodLength;
         state = _data;
@@ -194,11 +208,11 @@ contract BondManager {
         return true;
     }
 
-    function _decodeState(bytes state) internal returns(uint256 totalBalance){
+    function _decodeState(bytes _state) internal returns(uint256 totalBalance){
         uint numParty;
         uint256 total;
         assembly {
-            numParty := mload(add(state, 96))
+            numParty := mload(add(_state, 96))
         }
 
         numParties = numParty;
@@ -213,8 +227,8 @@ contract BondManager {
             pos = 128+(32*numParty)+(32*i);
 
             assembly {
-                tempA:= mload(add(state, posA))
-                temp :=mload(add(state, pos))
+                tempA:= mload(add(_state, posA))
+                temp :=mload(add(_state, pos))
             }
 
             total+=temp;

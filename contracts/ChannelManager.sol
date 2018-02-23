@@ -171,15 +171,15 @@ contract ChannelManager {
 
     // Closing with the following does not need to contain a flag in state for an agreed close
 
-    // requires judge exercised, this is for punishing an an invalid state transition
-    // this may not be relevant for state channels with full party signature consensus
-    function closeWithChallenge(bytes32 _id) public {
-        require(channels[_id].disputeAddresses[0] != 0x0);
-        require(channels[_id].booleans[2] == 0);
-        // have the interpreter act on the verfied incorrect state 
-        channels[_id].interpreter.challenge(channels[_id].disputeAddresses[0], channels[_id].state);
-        channels[_id].booleans[0] = 0;
-    }
+    // // requires judge exercised, this is for punishing an an invalid state transition
+    // // this may not be relevant for state channels with full party signature consensus
+    // function closeWithChallenge(bytes32 _id) public {
+    //     require(channels[_id].disputeAddresses[0] != 0x0);
+    //     require(channels[_id].booleans[2] == 0);
+    //     // have the interpreter act on the verfied incorrect state 
+    //     channels[_id].interpreter.challenge(channels[_id].disputeAddresses[0], channels[_id].state);
+    //     channels[_id].booleans[0] = 0;
+    // }
 
     // Allow closing with a previously agreed upon state after some challenge period
     function closeWithTimeout(bytes32 _id) public {

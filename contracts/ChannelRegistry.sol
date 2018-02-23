@@ -1,16 +1,8 @@
-// This contract acts as a multisig between channel participants. 
-// Requirements
-//   - store bond value in ether and tokens
-//   - store counterfactual address of SPC
-//   - point that address to the registry contract
-//   - check sigantures on state of SPC
-//   - check that byte code derives CTF address
-//   - Be able to reconstruct final balances on SPC from state of SPC
-
 pragma solidity ^0.4.18;
 
 contract ChannelRegistry {
     mapping(bytes32 => address) registry;
+    bytes32 public ctfaddy;
 
     event ContractDeployed(address deployedAddress);
 
@@ -18,7 +10,7 @@ contract ChannelRegistry {
         return registry[_CTFaddress];
     }
 
-    function deployCTF(bytes _CTFbytes, bytes32 _CTFaddress) public {
+    function deployCTF(bytes _CTFbytes, bytes _sigs) public {
         address deployedAddress;
         assembly {
             deployedAddress := create(0, add(_CTFbytes, 0x20), mload(_CTFbytes))
@@ -27,7 +19,18 @@ contract ChannelRegistry {
         }
         // todo: check that CTFaddress is derived correctly from 
         // all signatures of provided parties.
-        
+        // check that all signatures are present
+        //bytes sigs = _concat(_v, _r, _s);
+
+
+        bytes32 _CTFaddress = keccak256(_sigs);
+
+        // for(uint i=2; i<_s.length; i++) {
+        //     _CTFaddress = keccak256(_CTFaddress, _r[i], _s[i], _v[i]);
+        // }
+
+        ctfaddy = _CTFaddress;
+
         registry[_CTFaddress] = deployedAddress;
         ContractDeployed(deployedAddress);
     }

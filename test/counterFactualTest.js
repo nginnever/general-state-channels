@@ -19,7 +19,6 @@ let event_args
 
 contract('counterfactual payment channel', function(accounts) {
   it("Payment Channel", async function() {
-    bm = await BondManager.new()
     reg = await Registry.new()
     // counterfactual code should be pulled from compiled code not from deployed, quick hack for now
     spc = await SPC.new()
@@ -36,26 +35,55 @@ contract('counterfactual payment channel', function(accounts) {
     var sig1 = await web3.eth.sign(accounts[0], hmsg)
     var r = sig1.substr(0,66)
     var s = "0x" + sig1.substr(66,64)
-    var v = 27
+    //var v = parseInt(sig1.substr(130, 2)) + 27
+    var v = "0x" + sig1.substr(130,2)
 
     console.log('party 1 signature of CTF bytecode: '+sig1)
 
     var sig2 = await web3.eth.sign(accounts[1], hmsg)
-    var r = sig2.substr(0,66)
-    var s = "0x" + sig2.substr(66,64)
-    var v = 27
+    var r2 = sig2.substr(0,66)
+    var s2 = "0x" + sig2.substr(66,64)
+    //var v2 = parseInt(sig2.substr(130, 2)) + 27
+    var v2 = "0x" + sig2.substr(130,2)
+
+    var sig3 = await web3.eth.sign(accounts[2], hmsg)
+    var r3 = sig2.substr(0,66)
+    var s3 = "0x" + sig3.substr(66,64)
+    //var v3 = parseInt(sig3.substr(130, 2)) + 27
+    var v3 = "0x" + sig3.substr(130,2)
+
+    sigV = []
+    sigR = []
+    sigS = []
+
+    sigV.push(v)
+    sigV.push(v2)
+    sigV.push(v3)
+    sigR.push(r)
+    sigR.push(r2)
+    sigR.push(r3)
+    sigS.push(s)
+    sigS.push(s2)
+    sigS.push(s3)
 
     console.log('party 2 signature of CTF bytecode: '+sig2)
+    console.log('party 3 signature of CTF bytecode: '+sig3)
 
     // construct an identifier for the counterfactual address
-    var CTFaddress = '0x' + sig1.substr(2, 2) + sig2.substr(2,2)
+    //var CTFaddress = '0x' + sig1.substr(2, 2) + sig2.substr(2,2)
+    var sigs = sig1+sig2.substr(2, sig2.length)+sig3.substr(2, sig3.length)
+    var CTFaddress = web3.sha3(sigs, {encoding: 'hex'})
     console.log('counterfactual address: ' + CTFaddress)
 
-    await reg.deployCTF(ctfcode, CTFaddress)
+    //bm = await BondManager.new(0, CTFaddress, reg.address)
 
-    // let deployAddress = await reg.resolveAddress(CTFaddress)
+    await reg.deployCTF(ctfcode, sigs)
 
-    // console.log('counterfactual contract deployed and mapped by registry: ' + deployAddress)
+    let deployAddress = await reg.resolveAddress(CTFaddress)
+
+    console.log('counterfactual contract deployed and mapped by registry: ' + deployAddress)
+    let ctfaddy = await reg.ctfaddy()
+    console.log('contract hashed ctf addres: ' + ctfaddy)
 
     // let newBm = BondManager.at(deployAddress)
     // let testBm = await newBm.test()
