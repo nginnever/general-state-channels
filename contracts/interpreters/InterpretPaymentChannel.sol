@@ -17,25 +17,24 @@ contract InterpretPaymentChannel is InterpreterInterface {
 
     // This always returns true since the receiver should only
     // sign and close the highest balance they have
-    function isClose() public returns(bool) {
+    function isClose(bytes _data) public returns(bool) {
         return true;
     }
 
-    function isSequenceHigher(bytes _data, uint _seq) public pure returns (bool) {
-        uint isHigher;
+    function isSequenceHigher(bytes _data1, bytes _data2) public pure returns (bool) {
+        uint isHigher1;
+        uint isHigher2;
 
         assembly {
-            isHigher := mload(add(_data, 160))
+            isHigher1 := mload(add(_data1, 64))
+            isHigher2 := mload(add(_data2, 64))
         }
 
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
-        require(isHigher >= _seq);
+        require(isHigher1 > isHigher2);
         return true;
     }
 
-    function isAddressInState() public returns (bool) {
+    function isAddressInState(address _queryAddress) public returns (bool) {
         return true;
     }
 
@@ -70,5 +69,27 @@ contract InterpretPaymentChannel is InterpreterInterface {
 
     //     }
     // }
+
+    function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
+
+    }
+
+
+    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
+
+
+    function initState(bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public returns (bool) {
+
+    }
+
+    function run(bytes _data) public {
+
+    }
+
+
+    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
+
+
+
 
 }

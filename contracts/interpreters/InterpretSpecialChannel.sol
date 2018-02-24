@@ -3,7 +3,6 @@ pragma solidity ^0.4.18;
 
 import "../ChannelRegistry.sol";
 import "./InterpreterInterface.sol";
-import "./InterpretNPartyPayments.sol";
 import "./InterpretBidirectional.sol";
 import "./InterpretPaymentChannel.sol";
 import "./InterpretBattleChannel.sol";
@@ -165,7 +164,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         return true;
     }
 
-    function isClose(bytes _data) returns(bool) {
+    function isClose(bytes _data) public returns(bool) {
         uint isClosed;
 
         assembly {
@@ -220,13 +219,11 @@ contract InterpretSpecialChannel is InterpreterInterface {
         address _addressB;
         uint256 _balanceA;
         uint256 _balanceB;
-        uint _gameLength;
-        uint _sequence;
-        uint _isClose;
+        //uint _sequence;
         uint _settlement;
         uint _intType;
         bytes32 _CTFaddress;
-        bytes memory _gameState;
+        //bytes memory _gameState;
 
         assembly {
             _numGames := mload(add(_state, 96))
@@ -244,6 +241,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
             numGames = _numGames;
             // push pointer past the addresses and balances
             uint pos = 256;
+            uint _gameLength;
 
             assembly {
                 _gameLength := mload(add(_state, pos))
@@ -269,18 +267,16 @@ contract InterpretSpecialChannel is InterpreterInterface {
             assembly {
                 _intType := mload(add(_state, add(pos, 32)))
                 _CTFaddress := mload(add(_state, add(pos, 64)))
-                _isClose := mload(add(_state, add(pos,96)))
-                _sequence := mload(add(_state, add(pos,128)))
+                //_sequence := mload(add(_state, add(pos,128)))
                 _settlement := mload(add(_state, add(pos, 160)))
-                _gameState := mload(add(_state, add(pos, _posState)))
+                //_gameState := mload(add(_state, add(pos, _posState)))
             }
 
             games[_gameIndex].intType = _intType;
             games[_gameIndex].settlementPeriodLength = _settlement;
             games[_gameIndex].CTFaddress = _CTFaddress;
-            games[_gameIndex].isClose = _isClose;
-            games[_gameIndex].sequence = _sequence;
-            games[_gameIndex].state = _gameState;
+            //games[_gameIndex].sequence = _sequence;
+            //games[_gameIndex].state = _gameState;
         }
 
     }
@@ -317,7 +313,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
 
         require(_hasAllSigs(_partyA, _partyB));
-        
+
         state = _state;
     }
 

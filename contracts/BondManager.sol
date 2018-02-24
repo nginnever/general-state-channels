@@ -58,6 +58,7 @@ contract BondManager {
         bond = _decodeState(_state);
         require(partyA == s);
         require(balanceA == msg.value);
+        state = _state;
 
         bonded += msg.value;
     }
@@ -190,10 +191,10 @@ contract BondManager {
         uint256 _balanceB;
 
         assembly {
-            _addressA := mload(add(_state, 128))
-            _addressB := mload(add(_state, 160))
-            _balanceA := mload(add(_state, 192))
-            _balanceB := mload(add(_state, 224))
+            _addressA := mload(add(_state, 96))
+            _addressB := mload(add(_state, 128))
+            _balanceA := mload(add(_state, 160))
+            _balanceB := mload(add(_state, 192))
         }
 
         total = _balanceA + _balanceB;
