@@ -10,7 +10,7 @@ contract InterpreterInterface {
     // Notice: all functions must return pass or fail or nothing
 
     // function interpret(bytes _data) public returns (bool);
-    function startSettleStateGame(uint _gameIndex, bytes _state, uint8[] _v, bytes32[] _r, bytes32[] _s) public;
+    function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public;
 
     function isClose(bytes _data) public returns (bool);
 

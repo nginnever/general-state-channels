@@ -15,13 +15,14 @@ import "./interpreters/InterpreterInterface.sol";
 
 contract BondManager {
     // TODO: Allow token balances
-    mapping(address => uint256) balances;
 
     ChannelRegistry public registry;
 
     uint sequenceNum = 0;
-    uint public numParties = 0;
-    uint public numJoined = 0;
+    address public partyA;
+    address public partyB;
+    uint256 public balanceA;
+    uint256 public balanceB;
     uint256 bond = 0; //in state
     uint256 bonded = 0;
     bytes32 interpreter;
@@ -55,7 +56,8 @@ contract BondManager {
         // consider if this is required
         require(s == msg.sender || s == tx.origin);
         bond = _decodeState(_state);
-        require(balances[s] == msg.value);
+        require(partyA == s);
+        require(balanceA == msg.value);
 
         bonded += msg.value;
     }
@@ -67,86 +69,68 @@ contract BondManager {
         // check that the state is signed by the sender and sender is in the state
         address _joiningParty = _getSig(state, _v, _r, _s);
 
-        require(balances[_joiningParty] == msg.value);
+        require(_joiningParty == partyB);
+        require(balanceB == msg.value);
 
         bonded += msg.value;
-        numJoined++;
-        if(numJoined == numParties) {
-            require(bond == bonded);
-            booleans[0] = 1;
-        }
+
+        require(bond == bonded);
+        booleans[0] = 1;
     }
 
-    function closeChannel(bytes _state, uint8[] sigV, bytes32[] sigR, bytes32[] sigS) public {
+    function closeChannel(bytes _state, uint8[2] sigV, bytes32[2] sigR, bytes32[2] sigS) public {
         require(_isClose(_state));
-        require(sigV.length == sigR.length && sigR.length == sigS.length);
 
         uint totalBalance = 0;
         totalBalance = _decodeState(_state);
         require(totalBalance == bonded);
 
-        address[] memory tempSigs = new address[](sigV.length);
+        address _partyA = _getSig(_state, sigV[0], sigR[0], sigS[0]);
+        address _partyB = _getSig(_state, sigV[1], sigR[1], sigS[1]);
 
-        for(uint i=0; i<sigV.length; i++) {
-            address participant = _getSig(_state, sigV[i], sigR[i], sigS[i]);
-            tempSigs[i] = participant;
-        }
-
-        require(_hasAllSigs(tempSigs));
-        _payout(tempSigs);
+        require(_hasAllSigs(_partyA, _partyB));
+        _payout(_partyA, _partyB);
+        booleans[0] = 0;
     }
 
-    function startSettleState(uint _gameIndex, uint8[] _v, bytes32[] _r, bytes32[] _s, bytes _data) public {
+    function startSettleState(uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s, bytes _state) public {
         require(booleans[1] == 0);
-        require(_v.length == _r.length && _r.length == _s.length);
+
         InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
 
         if(_gameIndex == 0) {
-            uint dataLength = _data.length;
+            address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
+            address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
 
-            address[] memory tempSigs = new address[](_v.length);
-
-            for(uint i=0; i<_v.length; i++) {
-                address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-                tempSigs[i] = participant;
-            }
-
-            require(_hasAllSigs(tempSigs));
+            require(_hasAllSigs(_partyA, _partyB));
             // consult the now deployed special channel logic to see if sequence is higher
             // this also may not be necessary, just check sequence on challenges. what if 
             // the initial state needs to be settled?
-            require(deployedInterpreter.isSequenceHigher(_data, state));
+            require(deployedInterpreter.isSequenceHigher(_state, state));
 
             // consider running some logic on the state from the interpreter to validate 
             // the new state obeys transition rules
 
             booleans[1] = 1;
             settlementPeriodEnd = now + settlementPeriodLength;
-            state = _data;
+            state = _state;
         } else {
-            deployedInterpreter.startSettleStateGame(_gameIndex, _data, _v, _r, _s);
+            deployedInterpreter.startSettleStateGame(_gameIndex, _state, _v, _r, _s);
         }
     }
 
-    function challengeSettleState(bytes _data, uint8[] _v, bytes32[] _r, bytes32[] _s) public {
+    function challengeSettleState(bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
         // require the channel to be in a settling state
         require(booleans[1] == 1);
         require(settlementPeriodEnd <= now);
-        uint dataLength = _data.length;
 
-        address[] memory tempSigs = new address[](_v.length);
+        address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
+        address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
 
-        for(uint i=0; i<_v.length; i++) {
-            address participant = _getSig(_data, _v[i], _r[i], _s[i]);
-            tempSigs[i] = participant;
-        }
-
-        // make sure all parties have signed
-        require(_hasAllSigs(tempSigs));
-
+        require(_hasAllSigs(_partyA, _partyB));
         // consult the now deployed special channel logic to see if sequence is higher 
         InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
-        require(deployedInterpreter.isSequenceHigher(_data, state));
+        require(deployedInterpreter.isSequenceHigher(_state, state));
 
         // consider running some logic on the state from the interpreter to validate 
         // the new state obeys transition rules. The only invalid transition is trying to 
@@ -155,44 +139,34 @@ contract BondManager {
         // expense.
 
         settlementPeriodEnd = now + settlementPeriodLength;
-        state = _data;
+        state = _state;
     }
 
-    function closeWithTimeout(bytes _state, uint8[] sigV, bytes32[] sigR, bytes32[] sigS) public {
+    function closeWithTimeout(bytes _state, uint8[2] sigV, bytes32[2] sigR, bytes32[2] sigS) public {
         require(settlementPeriodEnd <= now);
         require(booleans[1] == 1);
         require(booleans[0] == 1);
-        require(sigV.length == sigR.length && sigR.length == sigS.length);
 
         uint totalBalance = 0;
         totalBalance = _decodeState(_state);
         require(totalBalance == bonded);
 
-        address[] memory tempSigs = new address[](sigV.length);
+        address _partyA = _getSig(_state, sigV[0], sigR[0], sigS[0]);
+        address _partyB = _getSig(_state, sigV[1], sigR[1], sigS[1]);
 
-        for(uint i=0; i<sigV.length; i++) {
-            address participant = _getSig(_state, sigV[i], sigR[i], sigS[i]);
-            tempSigs[i] = participant;
-        }
-
-        require(_hasAllSigs(tempSigs));
-        _payout(tempSigs);
+        require(_hasAllSigs(_partyA, _partyB));
+        _payout(_partyA, _partyB);
         booleans[0] = 0;
     }
 
-    function _payout(address[] _parties) internal {
-        for(uint i=0; i<numParties; i++) {
-            _parties[i].transfer(balances[_parties[i]]);
-        }
+    function _payout(address _a, address _b) internal {
+        require(balanceA + balanceB == bonded);
+        partyA.transfer(balanceA);
+        partyB.transfer(balanceB);
     }
 
-    function _hasAllSigs(address[] _recovered) internal view returns (bool) {
-        require(_recovered.length == numParties);
-
-        for(uint i=0; i<_recovered.length; i++) {
-            // this means that final state balances can't be 0, fix this!
-            require(balances[_recovered[i]] != 0);
-        }
+    function _hasAllSigs(address _a, address _b) internal view returns (bool) {
+        require(_a == partyA && _b == partyB);
 
         return true;
     }
@@ -209,31 +183,25 @@ contract BondManager {
     }
 
     function _decodeState(bytes _state) internal returns(uint256 totalBalance){
-        uint numParty;
         uint256 total;
+        address _addressA;
+        address _addressB;
+        uint256 _balanceA;
+        uint256 _balanceB;
+
         assembly {
-            numParty := mload(add(_state, 96))
+            _addressA := mload(add(_state, 128))
+            _addressB := mload(add(_state, 160))
+            _balanceA := mload(add(_state, 192))
+            _balanceB := mload(add(_state, 224))
         }
 
-        numParties = numParty;
+        total = _balanceA + _balanceB;
+        balanceA = _balanceA;
+        balanceB = _balanceB;
+        partyA = _addressA;
+        partyB = _addressB;
 
-        for(uint i=0; i<numParty; i++){
-            uint pos = 0;
-            uint posA = 0;
-            address tempA;
-            uint temp;
-
-            posA = 160+(32*i);
-            pos = 160+(32*numParty)+(32*i);
-
-            assembly {
-                tempA:= mload(add(_state, posA))
-                temp :=mload(add(_state, pos))
-            }
-
-            total+=temp;
-            balances[tempA] = temp;
-        }
         return total;
     }
 
