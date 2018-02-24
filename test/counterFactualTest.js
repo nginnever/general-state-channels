@@ -21,7 +21,7 @@ contract('counterfactual payment channel', function(accounts) {
   it("Payment Channel", async function() {
     reg = await Registry.new()
     // counterfactual code should be pulled from compiled code not from deployed, quick hack for now
-    spc = await SPC.new()
+    spc = await SPC.new(reg.address)
 
     var ctfcode = spc.constructor.bytecode
 
@@ -130,3 +130,4 @@ function rightPadBytes32(data){
   }
   return data
 }
+

@@ -223,8 +223,8 @@ contract BondManager {
             address tempA;
             uint temp;
 
-            posA = 128+(32*i);
-            pos = 128+(32*numParty)+(32*i);
+            posA = 160+(32*i);
+            pos = 160+(32*numParty)+(32*i);
 
             assembly {
                 tempA:= mload(add(_state, posA))
