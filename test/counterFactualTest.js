@@ -131,19 +131,147 @@ contract('counterfactual payment channel', function(accounts) {
       0
     )
 
-    console.log('State_1: ' + state1)
+    hmsg = web3.sha3(state1, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
 
-    // await reg.deployCTF(ctfcode, sigs)
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = parseInt(sig1.substr(130, 2)) + 27
 
-    // let deployAddress = await reg.resolveAddress(CTFaddress)
+    console.log('{Simulated network send from A to receiver of state_1}')
+    
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = parseInt(sig2.substr(130, 2)) + 27
 
-    // console.log('counterfactual contract deployed and mapped by registry: ' + deployAddress)
-    // let ctfaddy = await reg.ctfaddy()
-    // console.log('contract hashed ctf addres: ' + ctfaddy)
+    console.log('State_1: ' + state1+'\n')
+    console.log('Generating payment...')
 
+    var state2 = generatePaywallSPCState(
+      0, 
+      2, 
+      1, 
+      accounts[0], 
+      accounts[1], 
+      10, 
+      20,
+      7,
+      1,
+      paymentCTFaddress,
+      0,
+      1,
+      0,
+      accounts[0],
+      accounts[1],
+      9,
+      1
+    )
+
+    hmsg = web3.sha3(state2, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsg)
+
+    sig1 = await web3.eth.sign(accounts[0], hmsg)
+    r = sig1.substr(0,66)
+    s = "0x" + sig1.substr(66,64)
+    v = parseInt(sig1.substr(130, 2)) + 27
+
+    console.log('{Simulated network send from A to receiver of state_2}')
+    
+    sig2 = await web3.eth.sign(accounts[1], hmsg)
+    r2 = sig2.substr(0,66)
+    s2 = "0x" + sig2.substr(66,64)
+    v2 = parseInt(sig2.substr(130, 2)) + 27
+
+    console.log('State_2: ' + state2+'\n')
+
+    console.log('Party A starting settlement of paywall channel...')
+    console.log('Deploying SPC and Paywall code to registry...')
+
+    // Does any of this work? Is it a good idea? 
+    // Why is a Raven like a writing desk?
+    await reg.deployCTF(ctfcode, CTFsigs)
+
+    let deployAddress = await reg.resolveAddress(CTFaddress)
+
+    // reregister the spc instance to the one the registry deployed
+    console.log('!!!!!')
+    console.log(spc.address)
+    spc = await SPC.at(deployAddress);
+    console.log(spc.address)
+
+    console.log('counterfactual SPC contract deployed and mapped by registry: ' + deployAddress)
+    let ctfaddy = await reg.ctfaddy()
+    console.log('contract hashed ctf address: ' + ctfaddy+'\n')
+    console.log(spc.address)
+
+    await reg.deployCTF(ctfpaymentcode, paymentCTFsigs)
+
+    deployAddress = await reg.resolveAddress(paymentCTFaddress)
+
+    console.log('counterfactual Paywall contract deployed and mapped by registry: ' + deployAddress)
+    ctfaddy = await reg.ctfaddy()
+    console.log()
+    console.log('contract hashed ctf address: ' + ctfaddy)
+    console.log(single.address)
+
+    var sigV = []
+    var sigR = []
+    var sigS = []
+
+    sigV.push(v)
+    sigV.push(v2)
+    sigR.push(r)
+    sigR.push(r2)
+    sigS.push(s)
+    sigS.push(s2)
+
+    await spc.startSettleStateGame(1, state2, sigV, sigR, sigS)
+
+    let spcPartyA = await spc.partyA()
+    let spcBalA = await spc.balanceA()
+    let spcPartyB = await spc.partyB()
+    let spcBalB = await spc.balanceB()
+    let numGames = await spc.numGames()
+    let intcft = await spc.ctfaddress()
+    let gamelength = await spc.gamelength()
+    let position = await spc.position()
+
+    let subchan = await spc.getSubChannel(1)
+
+    console.log('address A: '+ spcPartyA+' balance A: '+ spcBalA)
+    console.log('address B: '+ spcPartyB+' balance B: '+ spcBalB)
+    console.log('number of channels: ' + numGames)
+    console.log('reconstructed paywall ctf address: ' + intcft)
+    console.log('game length: ' + gamelength)
+    console.log('pos: ' + position)
+    console.log('sub channel struct in settlement: ' + subchan[6]+'\n')
+
+    console.log('party A closing sub channel with timeout...')
+    await spc.closeWithTimeoutGame(state2, 1, sigV, sigR, sigS)
+
+    console.log('sub channel closed')
+    spcPartyA = await spc.partyA()
+    spcBalA = await spc.balanceA()
+    spcPartyB = await spc.partyB()
+    spcBalB = await spc.balanceB()
+    console.log('address A: '+ spcPartyA+' balance A: '+ spcBalA)
+    console.log('address B: '+ spcPartyB+' balance B: '+ spcBalB)
+
+    let ctfpaywall = await Payment.at(deployAddress)
+
+    let ctfpaywallbala = await ctfpaywall.balanceA()
+    console.log('ctf paywall balance A: ' + ctfpaywallbala)
+    let ctfpaywallbalb = await ctfpaywall.balanceB()
+    console.log('ctf paywall balance B: ' + ctfpaywallbalb)
     // let newBm = BondManager.at(deployAddress)
     // let testBm = await newBm.test()
     // console.log('Test should be 420: ' + testBm)
+
+    console.log('begin settling byzantize bond manager state...')
+
+    await bm.startSettleState(0, sigV, sigR, sigS, state2)
 
 
   })
@@ -215,7 +343,7 @@ function generatePaywallSPCState(
 
     var m = sentinel +
         sequence.substr(2, sequence.length) +
-        numChannels.substr(2,numChannels) +
+        numChannels.substr(2,numChannels.length) +
         addressA.substr(2, addressA.length) +
         addressB.substr(2, addressB.length) +
         balanceA.substr(2, balanceA.length) + 

@@ -15,6 +15,8 @@ contract InterpretPaymentChannel is InterpreterInterface {
     //   return true;
     // }
 
+    uint256 public balanceA = 0;
+    uint256 public balanceB = 0;
     // This always returns true since the receiver should only
     // sign and close the highest balance they have
     function isClose(bytes _data) public returns(bool) {
@@ -74,12 +76,108 @@ contract InterpretPaymentChannel is InterpreterInterface {
 
     }
 
+    function closeWithTimeoutGame(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
 
+    }
     // function hasAllSigs(address[] recoveredAddresses) returns (bool);
 
 
-    function initState(bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public returns (bool) {
+    function initState(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public returns (bool) {
+        _decodeState(_state, _gameIndex);
+    }
 
+    function _decodeState(bytes _state, uint _gameIndex) {
+        // SPC State
+        // [
+        //    32 isClose
+        //    64 sequence
+        //    96 numInstalledChannels
+        //    128 address 1
+        //    160 address 2
+        //    192 balance 1
+        //    224 balance 2
+        //    256 channel 1 state length
+        //    288 channel 1 interpreter type
+        //    320 channel 1 CTF address
+        //    [
+        //        isClose
+        //        sequence
+        //        settlement period length
+        //        channel specific state
+        //        ...
+        //    ]
+        //    channel 2 state length
+        //    channel 2 interpreter type
+        //    channel 2 CTF address
+        //    [
+        //        isClose
+        //        sequence
+        //        settlement period length
+        //        channel specific state
+        //        ...
+        //    ]
+        //    ...
+        // ]
+
+        uint _numGames;
+
+        uint256 _balanceA;
+        uint256 _balanceB;
+
+        // game index 0 means this is an initial state where there have
+        // been no games loaded, so this state can't be assembled
+        if (_gameIndex != 0) {
+            // push pointer past the addresses and balances
+            uint pos = 256;
+            uint _gameLength;
+
+            assembly {
+                _gameLength := mload(add(_state, pos))
+            }
+
+            _gameLength = _gameLength*32;
+
+            if(_gameIndex > 1) {
+                pos+=_gameLength+32+32+32;
+            }
+
+            for(uint i=1; i<_gameIndex; i++) {
+                assembly {
+                    _gameLength := mload(add(_state, pos))
+                }
+                pos+=_gameLength+32+32+32;
+            }
+
+            if(_gameIndex > 1) {
+                pos-= 32+32;
+            }
+
+            // assembly {
+            //     _gameLength := mload(add(_state, pos))
+            // }
+
+            // uint _posState = pos+64+_gameLength;
+
+            assembly {
+                //_intType := mload(add(_state, add(pos, 32)))
+                //_CTFaddress := mload(add(_state, add(pos, 64)))
+                //_sequence := mload(add(_state, add(pos,128)))
+                //_settlement := mload(add(_state, add(pos, 160)))
+                //_gameState := mload(add(_state, add(pos, _posState)))
+                _balanceA := mload(add(_state, add(pos, 256)))
+                _balanceB := mload(add(_state, add(pos, 288)))
+            }
+
+            //games[_gameIndex].intType = _intType;
+            //games[_gameIndex].settlementPeriodLength = _settlement;
+            //games[_gameIndex].CTFaddress = _CTFaddress;
+            //games[_gameIndex].sequence = _sequence;
+            //games[_gameIndex].state = _gameState;
+            //ctfaddress = _CTFaddress;
+            //gamelength = _gameLength;
+            balanceA = _balanceA;
+            balanceB = _balanceB;
+        }
     }
 
     function run(bytes _data) public {

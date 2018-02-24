@@ -143,19 +143,26 @@ contract BondManager {
         state = _state;
     }
 
-    function closeWithTimeout(bytes _state, uint8[2] sigV, bytes32[2] sigR, bytes32[2] sigS) public {
+    function closeWithTimeout(uint _gameIndex, bytes _state, uint8[2] sigV, bytes32[2] sigR, bytes32[2] sigS) public {
         require(settlementPeriodEnd <= now);
         require(booleans[1] == 1);
         require(booleans[0] == 1);
 
-        uint totalBalance = 0;
-        totalBalance = _decodeState(_state);
-        require(totalBalance == bonded);
+        // uint totalBalance = 0;
+        // totalBalance = _decodeState(_state);
+        // require(totalBalance == bonded);
 
         address _partyA = _getSig(_state, sigV[0], sigR[0], sigS[0]);
         address _partyB = _getSig(_state, sigV[1], sigR[1], sigS[1]);
 
         require(_hasAllSigs(_partyA, _partyB));
+
+        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
+        //deployedInterpreter.closeWithTimeoutGame(_gameIndex, _state, sigV, sigR, sigS);
+
+        balanceA = deployedInterpreter.balanceA();
+        balanceB = deployedInterpreter.balanceB();
+
         _payout(_partyA, _partyB);
         booleans[0] = 0;
     }
