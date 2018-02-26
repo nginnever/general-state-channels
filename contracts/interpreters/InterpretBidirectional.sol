@@ -5,46 +5,22 @@ import "./InterpreterInterface.sol";
 contract InterpretBidirectional is InterpreterInterface {
     // State
     // [0-31] isClose flag
-    // [32-63] sequence number
-    // [64-95] addressA
-    // [96-127] addressB 
-    // [128-159] balance of party A
-    // [160-191] balance of party B
-
-    uint256 public b1;
-    uint256 public b2;
-    uint256 public bond;
-    address public a;
-    address public b;
-    bool public allJoin = false;
+    // [32-63] address sender
+    // [64-95] address receiver
+    // [96-127] bond 
+    // [128-159] balance of receiver
 
     // function interpret(bytes _data) public returns (bool) {
 
     //   return true;
     // }
 
-    function initState(bytes _data) public returns (bool) {
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
-
-        (_b1, _b2, _a, _b) = decodeState(_data);
-        a = _a;
-        b = _b;
-        b1 = _b1;
-        b2 = _b2;
-        return true;
-    }
-
+    uint256 totalBond = 0;
+    uint256 public balanceA = 0;
+    uint256 public balanceB = 0;
+    // This always returns true since the receiver should only
+    // sign and close the highest balance they have
     function isClose(bytes _data) public returns(bool) {
-        uint isClosed;
-
-        assembly {
-            isClosed := mload(add(_data, 32))
-        }
-
-        require(isClosed == 1);
         return true;
     }
 
@@ -57,94 +33,147 @@ contract InterpretBidirectional is InterpreterInterface {
             isHigher2 := mload(add(_data2, 64))
         }
 
-        // allow the sequence number to be equal to that of the settled state stored.
-        // this will allow a counterparty signature
-
         require(isHigher1 > isHigher2);
         return true;
     }
 
     function isAddressInState(address _queryAddress) public returns (bool) {
-        require(_queryAddress == a || _queryAddress == b);
-        if(a != 0x0 && b != 0x0) {
-            allJoin = true;
-        }
-        return true;
-    }
-
-    function hasAllSigs(address[] _recovered) public returns (bool) {
-        for(uint i=0; i<_recovered.length; i++) {
-            if(_recovered[i] == a) {
-                require(_recovered[i+1] == b);
-            } else {
-                require(_recovered[i-1] == a);
-            }
-            //require(_recovered[i] == _a || _recovered[i] == _b);
-        }
-
         return true;
     }
 
     function challenge(address _violator, bytes _state) public {
-        // we do not close with a challenge for bi-directional. We assume
-        // that the client will close with a settlement period on last good state
-        // instead
-        require(1==2);
+        // punish the violator
     }
 
-    function quickClose(bytes _state) public returns (bool) {
-
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
-
-        (_b1, _b2, _a, _b) = decodeState(_state);
-
-        b1 = _b1;
-        b2 = _b2;
-
-        require(_b1 + _b2 == this.balance);
-        _b.transfer(_b2);
-        _a.transfer(_b1);
+    // just look for receiver sig
+    function quickClose(bytes _data, uint _gameIndex) public returns (bool) {
+        _decodeState(_data, _gameIndex);
+        require(balanceA + balanceB == totalBond);
         return true;
     }
 
+    // function decodeState(bytes state) pure internal {
+    //     assembly {
+
+    //     }
+    // }
+
+    function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
+
+    }
+
+    function closeWithTimeoutGame(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
+
+    }
+    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
+
+
+    function initState(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public returns (bool) {
+        _decodeState(_state, _gameIndex);
+    }
+
+    function _decodeState(bytes _state, uint _gameIndex) {
+        // SPC State
+        // [
+        //    32 isClose
+        //    64 sequence
+        //    96 numInstalledChannels
+        //    128 address 1
+        //    160 address 2
+        //    192 balance 1
+        //    224 balance 2
+        //    256 channel 1 state length
+        //    288 channel 1 interpreter type
+        //    320 channel 1 CTF address
+        //    [
+        //        isClose
+        //        sequence
+        //        settlement period length
+        //        channel specific state
+        //        ...
+        //    ]
+        //    channel 2 state length
+        //    channel 2 interpreter type
+        //    channel 2 CTF address
+        //    [
+        //        isClose
+        //        sequence
+        //        settlement period length
+        //        channel specific state
+        //        ...
+        //    ]
+        //    ...
+        // ]
+
+        uint256 _bond;
+        uint256 _balanceA;
+        uint256 _balanceB;
+
+        // game index 0 means this is an initial state where there have
+        // been no games loaded, so this state can't be assembled
+        if (_gameIndex != 0) {
+            // push pointer past the addresses and balances
+            uint pos = 256;
+            uint _gameLength;
+
+            assembly {
+                _gameLength := mload(add(_state, pos))
+            }
+
+            _gameLength = _gameLength*32;
+
+            if(_gameIndex > 1) {
+                pos+=_gameLength+32+32+32;
+            }
+
+            for(uint i=1; i<_gameIndex; i++) {
+                assembly {
+                    _gameLength := mload(add(_state, pos))
+                }
+                pos+=_gameLength+32+32+32;
+            }
+
+            if(_gameIndex > 1) {
+                pos-= 32+32;
+            }
+
+            // assembly {
+            //     _gameLength := mload(add(_state, pos))
+            // }
+
+            // uint _posState = pos+64+_gameLength;
+
+            assembly {
+                //_intType := mload(add(_state, add(pos, 32)))
+                //_CTFaddress := mload(add(_state, add(pos, 64)))
+                //_sequence := mload(add(_state, add(pos,128)))
+                //_settlement := mload(add(_state, add(pos, 160)))
+                //_gameState := mload(add(_state, add(pos, _posState)))
+                _bond := mload(add(_state, add(pos, 256)))
+                _balanceA := mload(add(_state, add(pos, 288)))
+                _balanceB := mload(add(_state, add(pos, 320)))
+            }
+
+            //games[_gameIndex].intType = _intType;
+            //games[_gameIndex].settlementPeriodLength = _settlement;
+            //games[_gameIndex].CTFaddress = _CTFaddress;
+            //games[_gameIndex].sequence = _sequence;
+            //games[_gameIndex].state = _gameState;
+            //ctfaddress = _CTFaddress;
+            //gamelength = _gameLength;
+            balanceA = _balanceA;
+            balanceB = _balanceB;
+        }
+    }
 
     function run(bytes _data) public {
-        uint sequence;
-        uint _bond;
 
-        assembly {
-            sequence := mload(add(_data, 64))
-        }
-
-        uint256 _b1;
-        uint256 _b2;
-        address _a;
-        address _b;
-
-        (_b1, _b2, _a, _b) = decodeState(_data);
-
-        b1 = _b1;
-        b2 = _b2;
-        bond = _b1 + _b2;
-        _bond = _b1 + _b2;
-
-        require(_bond == this.balance);
     }
 
-    function allJoined() public returns (bool) {
-        return allJoin;
-    }
 
-    function decodeState(bytes state) pure internal returns (uint256 _b1, uint256 _b2, address _a, address _b) {
-        assembly {
-            _a := mload(add(state, 96))
-            _b := mload(add(state, 128))
-            _b1 := mload(add(state, 160))
-            _b2 := mload(add(state, 192))
-        }
-    }
+    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
+
+
+
 
 }

@@ -316,7 +316,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
 
     }
 
-    function quickClose(bytes _state) public returns (bool) {
+    function quickClose(bytes _state, uint _gameIndex) public returns (bool) {
 
     }
 

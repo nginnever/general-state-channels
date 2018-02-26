@@ -15,6 +15,7 @@ contract InterpretPaymentChannel is InterpreterInterface {
     //   return true;
     // }
 
+    uint256 public totalBond = 0;
     uint256 public balanceA = 0;
     uint256 public balanceB = 0;
     // This always returns true since the receiver should only
@@ -45,24 +46,9 @@ contract InterpretPaymentChannel is InterpreterInterface {
     }
 
     // just look for receiver sig
-    function quickClose(bytes _data) public returns (bool) {
-        uint256 _b1;
-        uint256 _bond;
-        address _a;
-        address _b;
-
-        assembly {
-          _a := mload(add(_data, 64))
-          _b := mload(add(_data, 96))
-          _bond := mload(add(_data, 128))
-          _b1 := mload(add(_data, 160))
-        }
-
-        require(_b1<=_bond && _b1>=0);
-
-        require(_bond == this.balance);
-        _b.transfer(_b1);
-        _a.transfer(_bond-_b1);
+    function quickClose(bytes _data, uint _gameIndex) public returns (bool) {
+        _decodeState(_data, _gameIndex);
+        require(balanceA + balanceB == totalBond);
         return true;
     }
 
@@ -84,6 +70,7 @@ contract InterpretPaymentChannel is InterpreterInterface {
 
     function initState(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public returns (bool) {
         _decodeState(_state, _gameIndex);
+        totalBond = balanceA + balanceB;
     }
 
     function _decodeState(bytes _state, uint _gameIndex) {
