@@ -13,7 +13,7 @@ import "./InterpretBattleChannel.sol";
 //   - challenge settle state: calls interpreter to check sigs and higher sequence num
 contract InterpretSpecialChannel is InterpreterInterface {
     // state
-    struct Game {
+    struct SubChannel {
         uint isClose;
         uint isInSettlementState;
         uint numParties;
@@ -26,21 +26,17 @@ contract InterpretSpecialChannel is InterpreterInterface {
         bytes state;
     }
 
-    mapping(uint => Game) games;
+    mapping(uint => SubChannel) subChannels;
     address public partyA;
     address public partyB;
     uint256 public balanceA;
     uint256 public balanceB;
     uint256 public bonded = 0;
-    uint public numGames = 0;
     bytes public state;
     uint isOpen = 1;
     uint isInSettlementState = 0;
     ChannelRegistry public registry;
 
-    bytes32 public ctfaddress;
-    uint public gamelength;
-    uint public position;
 
     function InterpretSpecialChannel(address _registry) {
         require(_registry != 0x0);
@@ -48,14 +44,14 @@ contract InterpretSpecialChannel is InterpreterInterface {
     }
 
     // entry point for settlement of byzantine sub-channel
-    function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
-        _decodeState(_state, _gameIndex);
+    function startSettleStateGame(uint _channelIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
+        _decodeState(_state, _channelIndex);
 
-        require(games[_gameIndex].isClose == 0);
-        require(games[_gameIndex].isInSettlementState == 0);
+        require(subChannels[_channelIndex].isClose == 0);
+        require(subChannels[_channelIndex].isInSettlementState == 0);
 
         // figure out decode ctf address and store
-        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(games[_gameIndex].CTFaddress));
+        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(subChannels[_channelIndex].CTFaddress));
 
         address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
         address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
@@ -72,8 +68,8 @@ contract InterpretSpecialChannel is InterpreterInterface {
         // the new state obeys transition rules
 
         // figure out storage
-        games[_gameIndex].isInSettlementState = 1;
-        games[_gameIndex].settlementPeriodEnd = now + games[_gameIndex].settlementPeriodLength;
+        subChannels[_channelIndex].isInSettlementState = 1;
+        subChannels[_channelIndex].settlementPeriodEnd = now + subChannels[_channelIndex].settlementPeriodLength;
     }
 
     // No need for a consensus close on the SPC since it is only instantiated in 
@@ -85,42 +81,19 @@ contract InterpretSpecialChannel is InterpreterInterface {
     // want to continue fast closing sub-channels against this contract. Though you
     // could just settle the sub-channels off chain until another dispute
 
-    // function closeChannel(bytes _state, uint8[] sigV, bytes32[] sigR, bytes32[] sigS) public {
-    //     require(isClose(_state));
-    //     require(sigV.length == sigR.length && sigR.length == sigS.length);
-
-    //     uint totalBalance = 0;
-    //     totalBalance = _decodeState(_state);
-    //     require(totalBalance == bonded);
-
-    //     address[] memory tempSigs = new address[](sigV.length);
-
-    //     for(uint i=0; i<sigV.length; i++) {
-    //         address participant = _getSig(_state, sigV[i], sigR[i], sigS[i]);
-    //         tempSigs[i] = participant;
-    //     }
-
-    //     require(hasAllSigs(tempSigs));
-    //     //_payout(tempSigs);
-    // }
-
-    function challengeSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
+    function challengeSettleStateGame(uint _channelIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
         // require the channel to be in a settling state
-        // figure out how to decode and store this in SPC
         //require(booleans[1] == 1);
-        //require(settlementPeriodEnd <= now);
+        require(subChannels[_channelIndex].settlementPeriodEnd <= now);
         address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
         address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
 
         require(_hasAllSigs(_partyA, _partyB));
-        // make sure all parties have signed
-        // figure out how to decode and store this in SPC
-        //require(_hasAllSigs(tempSigs));
 
         // consult the now deployed special channel logic to see if sequence is higher
         // figure out how decode the CTFaddress from the state
-        //InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
-        //require(deployedInterpreter.isSequenceHigher(_data, state));
+        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(subChannels[_channelIndex].CTFaddress));
+        require(deployedInterpreter.isSequenceHigher(_state, state));
 
         // consider running some logic on the state from the interpreter to validate 
         // the new state obeys transition rules. The only invalid transition is trying to 
@@ -128,20 +101,19 @@ contract InterpretSpecialChannel is InterpreterInterface {
         // for each channel, closing on a bad state like that would just fail at the channels
         // expense.
 
-        // figure out how to store this per chan
-        //settlementPeriodEnd = now + settlementPeriodLength;
-        //state = _data;
+        subChannels[_channelIndex].settlementPeriodEnd = now + subChannels[_channelIndex].settlementPeriodLength;
+        state = _state;
     }
 
-    function closeWithTimeoutGame(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
-        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(games[_gameIndex].CTFaddress));
+    function closeWithTimeoutGame(bytes _state, uint _channelIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
+        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(subChannels[_channelIndex].CTFaddress));
         // figure out how to decode and store this in SPC
-        require(games[_gameIndex].settlementPeriodEnd <= now);
-        require(games[_gameIndex].isClose == 0);
-        require(games[_gameIndex].isInSettlementState == 1);
+        require(subChannels[_channelIndex].settlementPeriodEnd <= now);
+        require(subChannels[_channelIndex].isClose == 0);
+        require(subChannels[_channelIndex].isInSettlementState == 1);
 
         // Sig checking don 
-        deployedInterpreter.initState(_state, _gameIndex, _v, _r, _s);
+        deployedInterpreter.initState(_state, _channelIndex, _v, _r, _s);
         //require(totalBalance == bonded);
 
         address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
@@ -152,7 +124,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         // update the spc state for balance
         balanceA += deployedInterpreter.balanceA();
         balanceB += deployedInterpreter.balanceB();
-        games[_gameIndex].isClose = 1;
+        subChannels[_channelIndex].isClose = 1;
     }
 
     function isSequenceHigher(bytes _data1, bytes _data2) public pure returns (bool) {
@@ -185,7 +157,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         return true;
     }
 
-    function _decodeState(bytes _state, uint _gameIndex) internal {
+    function _decodeState(bytes _state, uint _channelIndex) internal {
         // SPC State
         // [
         //    32 isClose
@@ -217,8 +189,8 @@ contract InterpretSpecialChannel is InterpreterInterface {
         //    ]
         //    ...
         // ]
-
-        uint _numGames;
+        // num sub channels may not be needed since the channel index is provided
+        uint _numSubChannels;
         address _addressA;
         address _addressB;
         uint256 _balanceA;
@@ -231,7 +203,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         //bytes memory _gameState;
 
         assembly {
-            _numGames := mload(add(_state, 96))
+            _numSubChannels := mload(add(_state, 96))
             _addressA := mload(add(_state, 128))
             _addressB := mload(add(_state, 160))
             _balanceA := mload(add(_state, 192))
@@ -242,43 +214,31 @@ contract InterpretSpecialChannel is InterpreterInterface {
         partyB = _addressB;
         balanceA = _balanceA;
         balanceB = _balanceB;
-        numGames = _numGames;
-        // game index 0 means this is an initial state where there have
-        // been no games loaded, so this state can't be assembled
-        if (_gameIndex != 0) {
+        // sub-channel index 0 means this is an initial state where there have
+        // been no sub-channels loaded, so this state can't be assembled
+        if (_channelIndex != 0) {
             // push pointer past the addresses and balances
             uint pos = 256;
-            uint _gameLength;
-
+            uint _channelLength;
             assembly {
-                _gameLength := mload(add(_state, pos))
+                _channelLength := mload(add(_state, pos))
             }
-
-            _gameLength = _gameLength*32;
-
-            if(_gameIndex > 1) {
-                pos+=_gameLength+32+32+32;
+            _channelLength = _channelLength*32;
+            if(_channelIndex > 1) {
+                pos+=_channelLength+32+32+32;
             }
-
-            for(uint i=1; i<_gameIndex; i++) {
+            for(uint i=1; i<_channelIndex; i++) {
                 assembly {
-                    _gameLength := mload(add(_state, pos))
+                    _channelLength := mload(add(_state, pos))
                 }
-                pos+=_gameLength+32+32+32;
+                pos+=_channelLength+32+32+32;
             }
-
-            if(_gameIndex > 1) {
+            if(_channelIndex > 1) {
                 pos-= 32+32;
             }
-
-            position = pos;
-
             // assembly {
             //     _gameLength := mload(add(_state, pos))
             // }
-
-            // uint _posState = pos+64+_gameLength;
-
             assembly {
                 _intType := mload(add(_state, add(pos, 32)))
                 _CTFaddress := mload(add(_state, add(pos, 64)))
@@ -287,15 +247,10 @@ contract InterpretSpecialChannel is InterpreterInterface {
                 //_gameState := mload(add(_state, add(pos, _posState)))
             }
 
-            games[_gameIndex].intType = _intType;
-            games[_gameIndex].settlementPeriodLength = _settlement;
-            games[_gameIndex].CTFaddress = _CTFaddress;
-            //games[_gameIndex].sequence = _sequence;
-            //games[_gameIndex].state = _gameState;
-            ctfaddress = _CTFaddress;
-            gamelength = _gameLength;
+            subChannels[_channelIndex].intType = _intType;
+            subChannels[_channelIndex].settlementPeriodLength = _settlement;
+            subChannels[_channelIndex].CTFaddress = _CTFaddress;
         }
-
     }
 
     function _getSig(bytes _d, uint8 _v, bytes32 _r, bytes32 _s) internal pure returns(address) {
@@ -316,7 +271,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
 
     }
 
-    function quickClose(bytes _state, uint _gameIndex) public returns (bool) {
+    function quickClose(bytes _state, uint _channelIndex) public returns (bool) {
 
     }
 
@@ -334,11 +289,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         state = _state;
     }
 
-    function run(bytes _state) public {
-
-    }
-
-    function getSubChannel(uint _gameIndex)
+    function getSubChannel(uint _channelIndex)
         external
         view
         returns
@@ -354,7 +305,7 @@ contract InterpretSpecialChannel is InterpreterInterface {
         uint settlementPeriodEnd,
         bytes state
     ) {
-        Game storage g = games[_gameIndex];
+        SubChannel storage g = subChannels[_channelIndex];
 
         return (
             g.isClose,
@@ -369,7 +320,4 @@ contract InterpretSpecialChannel is InterpreterInterface {
             g.state
         );
     }
-
-  
-
 }

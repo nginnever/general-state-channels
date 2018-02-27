@@ -10,8 +10,6 @@ contract InterpreterInterface {
       return interpreter;
     }
 
-    // Notice: all functions must return pass or fail or nothing
-
     // function interpret(bytes _data) public returns (bool);
     function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public;
 
@@ -21,14 +19,9 @@ contract InterpreterInterface {
 
     function isAddressInState(address _queryAddress) public returns (bool);
 
-    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
     function closeWithTimeoutGame(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public;
 
-    function quickClose(bytes _data, uint _gameIndex) public returns (bool);
-
     function initState(bytes _state, uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public returns (bool);
-
-    function run(bytes _data) public;
 
     function () public payable {
 

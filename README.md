@@ -1,4 +1,6 @@
-# general-state-channels 
+# general-state-channels
+
+# WIP!
 
 This POC is a combination of insights derived from Eth, L4, and Spankchain research. This system is a set of Ethereum contracts that attempts to abstract away the logic of authority contracts for many use cases by managing bonds and agreed upon state between participants. 
 

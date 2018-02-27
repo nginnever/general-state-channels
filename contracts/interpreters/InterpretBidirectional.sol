@@ -41,9 +41,6 @@ contract InterpretBidirectional is InterpreterInterface {
         return true;
     }
 
-    function challenge(address _violator, bytes _state) public {
-        // punish the violator
-    }
 
     // just look for receiver sig
     function quickClose(bytes _data, uint _gameIndex) public returns (bool) {
@@ -51,12 +48,6 @@ contract InterpretBidirectional is InterpreterInterface {
         require(balanceA + balanceB == totalBond);
         return true;
     }
-
-    // function decodeState(bytes state) pure internal {
-    //     assembly {
-
-    //     }
-    // }
 
     function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
 
@@ -136,44 +127,13 @@ contract InterpretBidirectional is InterpreterInterface {
             if(_gameIndex > 1) {
                 pos-= 32+32;
             }
-
-            // assembly {
-            //     _gameLength := mload(add(_state, pos))
-            // }
-
-            // uint _posState = pos+64+_gameLength;
-
             assembly {
-                //_intType := mload(add(_state, add(pos, 32)))
-                //_CTFaddress := mload(add(_state, add(pos, 64)))
-                //_sequence := mload(add(_state, add(pos,128)))
-                //_settlement := mload(add(_state, add(pos, 160)))
-                //_gameState := mload(add(_state, add(pos, _posState)))
                 _bond := mload(add(_state, add(pos, 256)))
                 _balanceA := mload(add(_state, add(pos, 288)))
                 _balanceB := mload(add(_state, add(pos, 320)))
             }
-
-            //games[_gameIndex].intType = _intType;
-            //games[_gameIndex].settlementPeriodLength = _settlement;
-            //games[_gameIndex].CTFaddress = _CTFaddress;
-            //games[_gameIndex].sequence = _sequence;
-            //games[_gameIndex].state = _gameState;
-            //ctfaddress = _CTFaddress;
-            //gamelength = _gameLength;
             balanceA = _balanceA;
             balanceB = _balanceB;
         }
     }
-
-    function run(bytes _data) public {
-
-    }
-
-
-    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
-
-
-
-
 }

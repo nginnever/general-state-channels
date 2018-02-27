@@ -1,13 +1,3 @@
-// This contract acts as a multisig between channel participants. 
-// Requirements
-//   - store bond value in ether and tokens
-//   - store counterfactual address of SPC
-//   - point that address to the registry contract
-//   - check sigantures on state of SPC
-//   - check that byte code derives CTF address
-//   - Be able to reconstruct final balances on SPC from state of SPC
-//   - Some non-zero balance for all participants
-
 // we can get rid of the settlement period logic and just decode state
 // in the happy case, or supply a function that both parties can call 
 // with matching final balances.
@@ -32,7 +22,6 @@ contract BondManager {
 
     ChannelRegistry public registry;
 
-    uint sequenceNum = 0;
     address public partyA;
     address public partyB;
     uint256 public balanceA;
@@ -40,20 +29,16 @@ contract BondManager {
     uint256 bond = 0; //in state
     uint256 bonded = 0;
     bytes32 interpreter;
-    uint256 settlementPeriodLength;
-    uint256 settlementPeriodEnd = 0;
     uint8[] booleans = [0,0,0]; // ['isChannelOpen', 'settlingPeriodStarted', 'judgeResolution']
     bytes state;
 
     event ChannelCreated(bytes32 channelId, address indexed initiator);
     event ChannelJoined(bytes32 channelId, address indexed joiningParty);
 
-    function BondManager(uint _settlementPeriod, bytes32 _interpreter, address _registry) {
-        require(_settlementPeriod >= 0);
+    function BondManager(bytes32 _interpreter, address _registry) {
         require(_interpreter != 0x0);
         require(_registry != 0x0);
         interpreter = _interpreter;
-        settlementPeriodLength = _settlementPeriod;
         registry = ChannelRegistry(_registry);
     }
 
@@ -67,7 +52,7 @@ contract BondManager {
     {
         // check the account opening a channel signed the initial state
         address s = _getSig(_state, _v, _r, _s);
-        // consider if this is required
+        // consider if this is required, reduces ability for 3rd party to facilitate txs 
         require(s == msg.sender || s == tx.origin);
         bond = _decodeState(_state);
         require(partyA == s);
@@ -168,5 +153,4 @@ contract BondManager {
 
         return(a);
     }
-
 }

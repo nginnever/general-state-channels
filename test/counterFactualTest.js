@@ -34,27 +34,48 @@ contract('counterfactual payment channel', function(accounts) {
     //console.log('SPC bytecode: ' + ctfcode)
     console.log('Begin signing and register ctf address...\n')
 
+    var ctfSPCstate = generateRegistryState(accounts[0], accounts[1], ctfcode)
+
     // Hashing and signature
-    var CTFhmsg = web3.sha3(ctfcode, {encoding: 'hex'})
+    var CTFhmsg = web3.sha3(ctfSPCstate, {encoding: 'hex'})
     console.log('hashed msg: ' + CTFhmsg + '\n')
 
     var CTFsig1 = await web3.eth.sign(accounts[0], CTFhmsg)
+    var ctfr1 = CTFsig1.substr(0,66)
+    var ctfs1 = "0x" + CTFsig1.substr(66,64)
+    var ctfv1 = parseInt(CTFsig1.substr(130, 2)) + 27
 
     console.log('party 1 signature of SPC CTF bytecode: '+CTFsig1+'\n')
 
     var CTFsig2 = await web3.eth.sign(accounts[1], CTFhmsg)
+    var ctfr2 = CTFsig2.substr(0,66)
+    var ctfs2 = "0x" + CTFsig2.substr(66,64)
+    var ctfv2 = parseInt(CTFsig2.substr(130, 2)) + 27
 
     console.log('party 2 signature of SPC CTF bytecode: '+CTFsig2+'\n')
+
+    var ctfsigV = []
+    var ctfsigR = []
+    var ctfsigS = []
+
+    ctfsigV.push(ctfv1)
+    ctfsigV.push(ctfv2)
+    ctfsigR.push(ctfr1)
+    ctfsigR.push(ctfr2)
+    ctfsigS.push(ctfs1)
+    ctfsigS.push(ctfs2)
 
     // construct an identifier for the counterfactual address
     //var CTFaddress = '0x' + sig1.substr(2, 2) + sig2.substr(2,2)
     var CTFsigs = CTFsig1+CTFsig2.substr(2, CTFsig2.length)
-    var CTFaddress = web3.sha3(CTFsigs, {encoding: 'hex'})
+    //var CTFsigs = ctfr1 + ctfs1.substr(2, ctfs1.length) + web3.toHex(ctfv1) + ctfr2.substr(2, ctfr2.length) + ctfs2.substr(2, ctfs2.length) + web3.toHex(ctfv2)
+    //var CTFaddress = web3.sha3(CTFsigs, {encoding: 'hex'})
+    var CTFaddress = CTFhmsg
     console.log('counterfactual address: ' + CTFaddress)
     console.log('SPC contract is now counterfactually instantiated\n')
     console.log('Deploying bond manager...')
 
-    bm = await BondManager.new(0, CTFaddress, reg.address)
+    bm = await BondManager.new(CTFaddress, reg.address)
 
     // generate SPC state
 
@@ -87,15 +108,36 @@ contract('counterfactual payment channel', function(accounts) {
     var single = await Payment.new()
     var ctfpaymentcode = single.constructor.bytecode
 
-    var paymentCTFhmsg = web3.sha3(ctfpaymentcode, {encoding: 'hex'})
+    var ctfpaymentstate = generateRegistryState(accounts[0], accounts[1], ctfpaymentcode)
+
+    var paymentCTFhmsg = web3.sha3(ctfpaymentstate, {encoding: 'hex'})
     console.log('payment channel CTF hashed msg: ' + paymentCTFhmsg + '\n')
 
     var paymentCTFsig1 = await web3.eth.sign(accounts[0], paymentCTFhmsg+ '\n')
+    var payctfr1 = paymentCTFsig1.substr(0,66)
+    var payctfs1 = "0x" + paymentCTFsig1.substr(66,64)
+    var payctfv1 = parseInt(paymentCTFsig1.substr(130, 2)) + 27
+
     console.log('partyB signing CTF channel')
     var paymentCTFsig2 = await web3.eth.sign(accounts[1], paymentCTFhmsg+'\n')
+    var payctfr2 = paymentCTFsig2.substr(0,66)
+    var payctfs2 = "0x" + paymentCTFsig2.substr(66,64)
+    var payctfv2 = parseInt(paymentCTFsig2.substr(130, 2)) + 27
+
+    var ctfpaysigV = []
+    var ctfpaysigR = []
+    var ctfpaysigS = []
+
+    ctfpaysigV.push(payctfv1)
+    ctfpaysigV.push(payctfv2)
+    ctfpaysigR.push(payctfr1)
+    ctfpaysigR.push(payctfr2)
+    ctfpaysigS.push(payctfs1)
+    ctfpaysigS.push(payctfs2)
 
     var paymentCTFsigs = paymentCTFsig1+paymentCTFsig2.substr(2, paymentCTFsig2.length)
-    var paymentCTFaddress = web3.sha3(paymentCTFsigs, {encoding: 'hex'})
+    //var paymentCTFaddress = web3.sha3(paymentCTFsigs, {encoding: 'hex'})
+    var paymentCTFaddress = paymentCTFhmsg
     console.log('paywall counterfactual address: ' + paymentCTFaddress)
 
     // Note we reduce the balance of partyA to represent committing 10 ether to the paywall
@@ -247,19 +289,32 @@ contract('counterfactual payment channel', function(accounts) {
 
     // Does any of this work? Is it a good idea? 
     // Why is a Raven like a writing desk?
-    await reg.deployCTF(ctfcode, CTFsigs)
+    //await reg.deployCTF(ctfcode, CTFsigs)
+    await reg.deployCTF(ctfcode, ctfSPCstate, ctfsigV, ctfsigR, ctfsigS)
 
     let deployAddress = await reg.resolveAddress(CTFaddress)
-
+    let dAddress = await reg.ctfaddy()
+    console.log(CTFaddress)
+    console.log('SPC deploy address: ' + dAddress)
+    console.log('---')
+    console.log(CTFsigs)
+    console.log('---')
+    console.log(ctfsigR[0]+ctfsigS[0]+ctfsigV[0])
+    console.log('----')
+    console.log(ctfr1+ctfs1.substr(2, ctfs1.length)+ctfv1)
+    console.log(CTFsig1)
+    console.log('-----')
+    console.log(ctfr2+ctfs2+ctfv2)
+    console.log(CTFsig2)
     // reregister the spc instance to the one the registry deployed
     spc = await SPC.at(deployAddress);
 
     console.log('counterfactual SPC contract deployed and mapped by registry: ' + deployAddress)
     let ctfaddy = await reg.ctfaddy()
     console.log('contract hashed ctf address: ' + ctfaddy+'\n')
-    console.log(spc.address)
 
-    await reg.deployCTF(ctfpaymentcode, paymentCTFsigs)
+    //await reg.deployCTF(ctfpaymentcode, paymentCTFsigs)
+    await reg.deployCTF(ctfpaymentcode, ctfpaymentstate, ctfpaysigV, ctfpaysigR, ctfpaysigS)
 
     deployAddress = await reg.resolveAddress(paymentCTFaddress)
 
@@ -290,19 +345,11 @@ contract('counterfactual payment channel', function(accounts) {
     let spcBalA = await spc.balanceA()
     let spcPartyB = await spc.partyB()
     let spcBalB = await spc.balanceB()
-    let numGames = await spc.numGames()
-    let intcft = await spc.ctfaddress()
-    let gamelength = await spc.gamelength()
-    let position = await spc.position()
 
     let subchan = await spc.getSubChannel(1)
 
     console.log('address A: '+ spcPartyA+' balance A: '+ spcBalA)
     console.log('address B: '+ spcPartyB+' balance B: '+ spcBalB)
-    console.log('number of channels: ' + numGames)
-    console.log('reconstructed paywall ctf address: ' + intcft)
-    console.log('game length: ' + gamelength)
-    console.log('pos: ' + position)
     console.log('sub channel struct in settlement: ' + subchan[6]+'\n')
 
     console.log('Party B challenging settlement...')
@@ -567,6 +614,18 @@ function generateInitSPCState(sentinel, seq, numChan, addyA, addyB, balA, balB) 
         addressB.substr(2, addressB.length) +
         balanceA.substr(2, balanceA.length) + 
         balanceB.substr(2, balanceB.length)
+
+    return m
+}
+
+function generateRegistryState(partyA, partyB, bytecode) {
+    var addressA = padBytes32(partyA)
+    var addressB = padBytes32(partyB)
+
+    var m = 
+        addressA +
+        addressB.substr(2, addressB.length) +
+        bytecode.substr(2, bytecode.length)
 
     return m
 }

@@ -41,22 +41,12 @@ contract InterpretPaymentChannel is InterpreterInterface {
         return true;
     }
 
-    function challenge(address _violator, bytes _state) public {
-        // punish the violator
-    }
-
     // just look for receiver sig
     function quickClose(bytes _data, uint _gameIndex) public returns (bool) {
         _decodeState(_data, _gameIndex);
         require(balanceA + balanceB == totalBond);
         return true;
     }
-
-    // function decodeState(bytes state) pure internal {
-    //     assembly {
-
-    //     }
-    // }
 
     function startSettleStateGame(uint _gameIndex, bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
 
@@ -106,7 +96,6 @@ contract InterpretPaymentChannel is InterpreterInterface {
         //    ...
         // ]
 
-        uint _numGames;
 
         uint256 _balanceA;
         uint256 _balanceB;
@@ -117,64 +106,28 @@ contract InterpretPaymentChannel is InterpreterInterface {
             // push pointer past the addresses and balances
             uint pos = 256;
             uint _gameLength;
-
             assembly {
                 _gameLength := mload(add(_state, pos))
             }
-
             _gameLength = _gameLength*32;
-
             if(_gameIndex > 1) {
                 pos+=_gameLength+32+32+32;
             }
-
             for(uint i=1; i<_gameIndex; i++) {
                 assembly {
                     _gameLength := mload(add(_state, pos))
                 }
                 pos+=_gameLength+32+32+32;
             }
-
             if(_gameIndex > 1) {
                 pos-= 32+32;
             }
-
-            // assembly {
-            //     _gameLength := mload(add(_state, pos))
-            // }
-
-            // uint _posState = pos+64+_gameLength;
-
             assembly {
-                //_intType := mload(add(_state, add(pos, 32)))
-                //_CTFaddress := mload(add(_state, add(pos, 64)))
-                //_sequence := mload(add(_state, add(pos,128)))
-                //_settlement := mload(add(_state, add(pos, 160)))
-                //_gameState := mload(add(_state, add(pos, _posState)))
                 _balanceA := mload(add(_state, add(pos, 256)))
                 _balanceB := mload(add(_state, add(pos, 288)))
             }
-
-            //games[_gameIndex].intType = _intType;
-            //games[_gameIndex].settlementPeriodLength = _settlement;
-            //games[_gameIndex].CTFaddress = _CTFaddress;
-            //games[_gameIndex].sequence = _sequence;
-            //games[_gameIndex].state = _gameState;
-            //ctfaddress = _CTFaddress;
-            //gamelength = _gameLength;
             balanceA = _balanceA;
             balanceB = _balanceB;
         }
     }
-
-    function run(bytes _data) public {
-
-    }
-
-
-    // function hasAllSigs(address[] recoveredAddresses) returns (bool);
-
-
-
-
 }
