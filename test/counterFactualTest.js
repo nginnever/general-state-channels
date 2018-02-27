@@ -191,36 +191,55 @@ contract('counterfactual payment channel', function(accounts) {
     var bidirectionalCTFaddress = web3.sha3(bidirectionalCTFsigs, {encoding: 'hex'})
     console.log('bidirectional counterfactual address: ' + bidirectionalCTFaddress + '\n')
 
-    // var state3 = generateBidirectionalSPCState(
-    //   0, 
-    //   3, 
-    //   2, 
-    //   accounts[0], 
-    //   accounts[1], 
-    //   5, 
-    //   15,
-    //   7,
-    //   1,
-    //   paymentCTFaddress,
-    //   0,
-    //   1,
-    //   0,
-    //   accounts[0],
-    //   accounts[1],
-    //   9,
-    //   1,
-    //   8, // statelength
-    //   2,
-    //   birectionalCTFaddress,
-    //   0,
-    //   0,
-    //   0,
-    //   accounts[0],
-    //   accounts[1],
-    //   10, //bond total
-    //   5,
-    //   5
-    // )
+    var state3 = generateBidirectionalSPCState(
+      0, 
+      3, 
+      2, 
+      accounts[0], 
+      accounts[1], 
+      5, 
+      15,
+      7,
+      1,
+      paymentCTFaddress,
+      0,
+      1,
+      0,
+      accounts[0],
+      accounts[1],
+      9,
+      1,
+      8, // statelength
+      2,
+      bidirectionalCTFaddress,
+      0,
+      0,
+      0,
+      accounts[0],
+      accounts[1],
+      10, //bond total
+      5,
+      5
+    )
+
+    var hmsgv2 = web3.sha3(state3, {encoding: 'hex'})
+    console.log('hashed msg: ' + hmsgv2)
+
+    var sig1v2 = await web3.eth.sign(accounts[0], hmsgv2)
+    var rv2 = sig1v2.substr(0,66)
+    var sv2 = "0x" + sig1v2.substr(66,64)
+    var vv2 = parseInt(sig1v2.substr(130, 2)) + 27
+
+    console.log('{Simulated network send from A to receiver of state_3}')
+    
+    var sig2v2 = await web3.eth.sign(accounts[1], hmsgv2)
+    var r2v2 = sig2v2.substr(0,66)
+    var s2v2 = "0x" + sig2v2.substr(66,64)
+    var v2v2 = parseInt(sig2v2.substr(130, 2)) + 27
+
+    console.log('State_3: ' + state3+'\n')
+
+
 
 
     console.log('Party A starting settlement of paywall channel...')
@@ -250,7 +269,6 @@ contract('counterfactual payment channel', function(accounts) {
     console.log('contract hashed ctf address: ' + ctfaddy + '\n')
     console.log(single.address)
 
-    console.log()
 
 
     console.log('party A starting settlement of paywall channel...\n')
@@ -312,11 +330,11 @@ contract('counterfactual payment channel', function(accounts) {
     // let testBm = await newBm.test()
     // console.log('Test should be 420: ' + testBm)
 
-    console.log('begin settling byzantine bond manager state...')
+    // console.log('begin settling byzantine bond manager state...')
 
-    await bm.startSettleState(0, sigV, sigR, sigS, state2)
+    // await bm.startSettleState(0, sigV, sigR, sigS, state2)
 
-
+    // bm.closeChannel()
   })
 
 })
@@ -338,31 +356,19 @@ function generateBidirectionalSPCState(
   _CTFsender,
   _CTFreceiver,
   _CTFbond,
-  _CTFbalanceReceiver
+  _CTFbalanceReceiver,
+  _stateLength2,
+  _intType2, 
+  _CTFAddress2,
+  _CTFsentinel2,
+  _CTFsequence2,
+  _CTFsettlementPeriod2,
+  _CTFsender2,
+  _CTFreceiver2,
+  _CTFbond2,
+  _CTFbalanceA2,
+  _CTFbalanceB2
 ) {
-    // SPC State
-    // [
-    //    32 isClose
-    //    64 sequence
-    //    96 numInstalledChannels
-    //    128 address 1
-    //    160 address 2
-    //    192 balance 1
-    //    224 balance 2
-    //    -----------------------------
-    //    256 channel 1 state length
-    //    288 channel 1 interpreter type
-    //    320 channel 1 CTF address
-    //    [
-    //        isClose
-    //        sequence
-    //        settlement period length
-    //        address sender
-    //        address receiver 
-    //        bond
-    //        balance receiver
-    //    ]
-    // ]
 
     var sentinel = padBytes32(web3.toHex(_sentinel))
     var sequence = padBytes32(web3.toHex(_seq))
@@ -383,6 +389,18 @@ function generateBidirectionalSPCState(
     var CTFbond = padBytes32(web3.toHex(web3.toWei(_CTFbond, 'ether')))
     var CTFbalanceReceiver = padBytes32(web3.toHex(web3.toWei(_CTFbalanceReceiver, 'ether')))
 
+    var stateLength2 = padBytes32(web3.toHex(_stateLength2))
+    var intType2 = padBytes32(web3.toHex(_intType2))
+    var CTFaddress2 = padBytes32(_CTFAddress2)
+    var CTFsentinel2 = padBytes32(web3.toHex(_CTFsentinel2))
+    var CTFsequence2 = padBytes32(web3.toHex(_CTFsequence2))
+    var CTFsettlementPeriod2 = padBytes32(web3.toHex(_CTFsettlementPeriod2))
+    var CTFsender2 = padBytes32(_CTFsender2)
+    var CTFreceiver2 = padBytes32(_CTFreceiver2)
+    var CTFbond2 = padBytes32(web3.toHex(web3.toWei(_CTFbond2, 'ether')))
+    var CTFbalanceA2 = padBytes32(web3.toHex(web3.toWei(_CTFbalanceA2, 'ether')))
+    var CTFbalanceB2 = padBytes32(web3.toHex(web3.toWei(_CTFbalanceB2, 'ether')))
+
 
     var m = sentinel +
         sequence.substr(2, sequence.length) +
@@ -400,7 +418,18 @@ function generateBidirectionalSPCState(
         CTFsender.substr(2, CTFsender.length) +
         CTFreceiver.substr(2, CTFreceiver.length) +
         CTFbond.substr(2, CTFbond.length) +
-        CTFbalanceReceiver.substr(2, CTFbalanceReceiver.length)
+        CTFbalanceReceiver.substr(2, CTFbalanceReceiver.length)+
+        stateLength2.substr(2, stateLength2.length) +
+        intType2.substr(2, intType2.length) +
+        CTFaddress2.substr(2, CTFaddress2.length) +
+        CTFsentinel2.substr(2, CTFsentinel2.length) +
+        CTFsequence2.substr(2, CTFsequence2.length) +
+        CTFsettlementPeriod2.substr(2, CTFsettlementPeriod2.length) +
+        CTFsender2.substr(2, CTFsender2.length) +
+        CTFreceiver2.substr(2, CTFreceiver2.length) +
+        CTFbond2.substr(2, CTFbond2.length) +
+        CTFbalanceA2.substr(2, CTFbalanceA2.length) +
+        CTFbalanceB2.substr(2, CTFbalanceB2.length)
 
     return m
 }

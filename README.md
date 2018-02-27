@@ -1,15 +1,12 @@
 # general-state-channels 
 
-This POC is a combination of insights derived from Eth, L4, and Spankchain research. This system is a set of Ethereum contracts that attempts to abstract away the logic of authority contracts for many use cases by managing bonds and agreed upon state between participants. It allows state channels to be open with up to N participants where N is bounded by the gas costs to reconstruct signatures (~50 participants).
-
-The current version of this implementation requires that the agreed upon interpreter contracts be deployed when the channel is opened. As L4 research suggests this may be replaced by putting the byte code of the interpreter contracts in the agreed upon state. This work is left TODO.
+This POC is a combination of insights derived from Eth, L4, and Spankchain research. This system is a set of Ethereum contracts that attempts to abstract away the logic of authority contracts for many use cases by managing bonds and agreed upon state between participants. 
 
 ## Table of Contents:
 
 - Supported Systems
-  - Single Direction Payment Channel
+  - Single Direction Paywall Channel
   - Bi-directional Payment Channel
-  - N-Party Payment Channel (N <= 50)
   - Crypto Kitties Battle Channel
 - Background Information
 - Channel API

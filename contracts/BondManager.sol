@@ -8,6 +8,20 @@
 //   - Be able to reconstruct final balances on SPC from state of SPC
 //   - Some non-zero balance for all participants
 
+// we can get rid of the settlement period logic and just decode state
+// in the happy case, or supply a function that both parties can call 
+// with matching final balances.
+// function closeWallet(_balanceA, _balanceB) {
+//   closeBalanceA = _balanceA;
+//   closeBalanceB = _balanceB;
+//   require(msg.sender == partyA or partyB);
+//   numClosed++;
+//   closer1 = msg.sender;
+//   if(numClosed == 2) {
+//       require(closer1 == partyA and closer2 == partyB);
+//       payout();
+//   }
+// }
 pragma solidity ^0.4.18;
 
 import "./ChannelRegistry.sol";
@@ -80,78 +94,6 @@ contract BondManager {
     }
 
     function closeChannel(bytes _state, uint8[2] sigV, bytes32[2] sigR, bytes32[2] sigS) public {
-        require(_isClose(_state));
-
-        uint totalBalance = 0;
-        totalBalance = _decodeState(_state);
-        require(totalBalance == bonded);
-
-        address _partyA = _getSig(_state, sigV[0], sigR[0], sigS[0]);
-        address _partyB = _getSig(_state, sigV[1], sigR[1], sigS[1]);
-
-        require(_hasAllSigs(_partyA, _partyB));
-        _payout(_partyA, _partyB);
-        booleans[0] = 0;
-    }
-
-    function startSettleState(uint _gameIndex, uint8[2] _v, bytes32[2] _r, bytes32[2] _s, bytes _state) public {
-        require(booleans[1] == 0);
-
-        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
-
-        if(_gameIndex == 0) {
-            address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
-            address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
-
-            require(_hasAllSigs(_partyA, _partyB));
-            // consult the now deployed special channel logic to see if sequence is higher
-            // this also may not be necessary, just check sequence on challenges. what if 
-            // the initial state needs to be settled?
-            require(deployedInterpreter.isSequenceHigher(_state, state));
-
-            // consider running some logic on the state from the interpreter to validate 
-            // the new state obeys transition rules
-
-            booleans[1] = 1;
-            settlementPeriodEnd = now + settlementPeriodLength;
-            state = _state;
-        } else {
-            deployedInterpreter.startSettleStateGame(_gameIndex, _state, _v, _r, _s);
-        }
-    }
-
-    function challengeSettleState(bytes _state, uint8[2] _v, bytes32[2] _r, bytes32[2] _s) public {
-        // require the channel to be in a settling state
-        require(booleans[1] == 1);
-        require(settlementPeriodEnd <= now);
-
-        address _partyA = _getSig(_state, _v[0], _r[0], _s[0]);
-        address _partyB = _getSig(_state, _v[1], _r[1], _s[1]);
-
-        require(_hasAllSigs(_partyA, _partyB));
-        // consult the now deployed special channel logic to see if sequence is higher 
-        InterpreterInterface deployedInterpreter = InterpreterInterface(registry.resolveAddress(interpreter));
-        require(deployedInterpreter.isSequenceHigher(_state, state));
-
-        // consider running some logic on the state from the interpreter to validate 
-        // the new state obeys transition rules. The only invalid transition is trying to 
-        // create more tokens than the bond holds, since each contract is currently deployed
-        // for each channel, closing on a bad state like that would just fail at the channels
-        // expense.
-
-        settlementPeriodEnd = now + settlementPeriodLength;
-        state = _state;
-    }
-
-    function closeWithTimeout(uint _gameIndex, bytes _state, uint8[2] sigV, bytes32[2] sigR, bytes32[2] sigS) public {
-        require(settlementPeriodEnd <= now);
-        require(booleans[1] == 1);
-        require(booleans[0] == 1);
-
-        // uint totalBalance = 0;
-        // totalBalance = _decodeState(_state);
-        // require(totalBalance == bonded);
-
         address _partyA = _getSig(_state, sigV[0], sigR[0], sigS[0]);
         address _partyB = _getSig(_state, sigV[1], sigR[1], sigS[1]);
 
@@ -166,6 +108,7 @@ contract BondManager {
         _payout(_partyA, _partyB);
         booleans[0] = 0;
     }
+
 
     function _payout(address _a, address _b) internal {
         require(balanceA + balanceB == bonded);
